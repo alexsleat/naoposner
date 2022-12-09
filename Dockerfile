@@ -1,6 +1,15 @@
 # base image for docker:
-#FROM osrf/ros:melodic-desktop
-FROM ubuntu:20.04
+FROM osrf/ros:melodic-desktop
+#FROM ubuntu:20.04
+
+##########################################################################
+# IF nvidia-container-runtime
+# info: http://wiki.ros.org/docker/Tutorials/Hardware%20Acceleration#nvidia-docker2
+##########################################################################
+ENV NVIDIA_VISIBLE_DEVICES \
+    ${NVIDIA_VISIBLE_DEVICES:-all}
+ENV NVIDIA_DRIVER_CAPABILITIES \
+    ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
 
 ##########################################################################
 # Install common applications:
@@ -17,8 +26,10 @@ RUN apt-get update && \
 RUN apt-get update --fix-missing
 RUN pip3 install --upgrade pip
 
+
+### Only needed if running without ROS image:
 ## Install Python2
-RUN apt-get install -y python2-minimal
+# RUN apt-get install -y python2-minimal
 # Install pip2
 RUN apt-get update 
 RUN apt-get install -y curl 
@@ -26,11 +37,12 @@ WORKDIR /tmp
 RUN curl https://bootstrap.pypa.io/pip/2.7/get-pip.py --output get-pip.py
 RUN python2 get-pip.py
 
+### Only needed if running with ROS image:
 # Install ROS tools:
-#RUN apt-get install -y ros-melodic-catkin
-#RUN pip3 install -U rosdep rosinstall_generator wstool rosinstall
+RUN apt-get install -y ros-melodic-catkin
+RUN pip3 install -U rosdep rosinstall_generator wstool rosinstall
 # Add ROS to bashrc:
-#RUN bash -c "echo 'source /opt/ros/melodic/setup.bash' >> ~/.bashrc"
+RUN bash -c "echo 'source /opt/ros/melodic/setup.bash' >> ~/.bashrc"
 
 ##########################################################################
 # Robot installations:
@@ -82,8 +94,13 @@ RUN pip2 install configparser
 
 RUN apt-get install -y libusb-1.0-0-dev portaudio19-dev libasound2-dev freeglut3-dev libsdl2-mixer-2.0-0 libsdl2-image-2.0-0 libsdl2-2.0-0
 RUN pip3 install addict
-RUN wget https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-20.04/wxPython-4.1.0-cp38-cp38-linux_x86_64.whl
-RUN pip3 install wxPython-4.1.0-cp38-cp38-linux_x86_64.whl
+### Running on 20.04:
+#RUN wget https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-20.04/wxPython-4.1.0-cp38-cp38-linux_x86_64.whl
+# RUN pip3 install wxPython-4.1.0-cp38-cp38-linux_x86_64.whl
+### For running on ros image:
+RUN wget https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04/wxPython-4.1.0-cp36-cp36m-linux_x86_64.whl
+RUN pip3 install wxPython-4.1.0-cp36-cp36m-linux_x86_64.whl
+
 RUN pip3 install psychopy==2022.1.1
 
 # Add directories from the host, to the guest:

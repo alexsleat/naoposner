@@ -101,6 +101,7 @@ class CommandExecuterModule(ALModule):
 
         # Create Proxy ALtts for letting NAO speak
         self.tts = ALProxy("ALTextToSpeech") # No IP Adress or ports needed
+        self.posture = ALProxy("ALRobotPosture")
         # The tracker module is for coordinate related movements
         self.tracker = ALProxy( "ALTracker" )
         # Enbales to run pre-installed behaviours
@@ -113,6 +114,9 @@ class CommandExecuterModule(ALModule):
 
         global memory
         memory = ALProxy("ALMemory")
+
+        # Tell the robot to "Crouch", stops over heating. Can be changed to "StandInit" if required for experiments
+        self.self.posture.goToPosture("Crouch", 1.0)
 
     def updateCoordinates(self,x,y,z):
         """Function that simply updates Parameters"""
