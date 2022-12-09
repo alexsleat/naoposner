@@ -1,0 +1,10 @@
+DOCKER_NAME="naoposner_img"
+CONTAINER_NAME="naoposner"
+
+# Select a robot (Uncomment one)
+#DOCKER_ROBOT="Cozmo"
+#DOCKER_ROBOT="Furhat"
+#DOCKER_ROBOT="Miro"
+#DOCKER_ROBOT="PepperNAO"
+#DOCKER_ROBOT="ROSMelodic"
+#DOCKER_ROBOT="ROSNoetic"
