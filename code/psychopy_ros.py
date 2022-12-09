@@ -39,6 +39,8 @@ class StimuliController:
         # ROS setup:
         rospy.init_node('psycopy', anonymous=True)
         rospy.Subscriber("stimulus", String, self.stimulusCb)
+        self.pub_keypress = rospy.Publisher('keypress', String, queue_size=0)
+
 
         #self.preScreen()
         # Set the start time of the experiment
@@ -141,6 +143,9 @@ class StimuliController:
         if 'q' in keys:
             print("quits")
             core.quit()
+        if len(keys) > 0:
+            for key in keys:
+                self.pub_keypress.publish(key.name)
 
 
 if __name__ == "__main__":
