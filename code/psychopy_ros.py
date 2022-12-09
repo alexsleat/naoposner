@@ -21,13 +21,6 @@ class StimuliController:
 
         self.kb = keyboard.Keyboard()
 
-        ## Set up an order for the conditions:
-        self.conditions = [
-                        [  ["", ""], ["", ">"], ["<", ""] ],
-                        [  ["", ""], ["", ">"], ["<", ""] ]
-                    ]
-
-
         ## Setup screen
         self.win0 = visual.Window(self.screen_resolution, screen=0, fullscr=self.full_screen)
         self.win1 = visual.Window(self.screen_resolution, screen=1, fullscr=self.full_screen)
@@ -46,17 +39,11 @@ class StimuliController:
         # Set the start time of the experiment
         self.time_start = datetime.now()
 
-        ## Set up 2 threads - 1 for displaying the stimulus and the other for logging the keypresses:
-        #display_thead = Thread(target=self.displayCondition, args=("left", "right", 5.0))
-        #display_thead = Thread(target=self.runConditions, args=(self.conditions, 1.0))
-        #display_thead = Thread(target=self.rosLoop)
-        #keyhandler_thread = Thread(target=self.keyController)
-        #keyhandler_thread.start()
-        #display_thead.start()
-        #display_thead.join()
-        self.displayCondition('v','t')
+
+        self.displayCondition(' ',' ')
         self.rosLoop()
 
+    ## Destructors: "i felt like destroying something beautiful"
     def __del__ (self):
 
         try:
@@ -68,6 +55,7 @@ class StimuliController:
         except Exception as e:
             print(e)
 
+    ## Callback when a stimulus is sent from nao_cueing.py
     def stimulusCb(self, data):
         rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
         if data.data == "pre":
@@ -82,10 +70,10 @@ class StimuliController:
             except Exception as e:
                 print(e)
 
-
+    ## ROS main loop, display latest stimulus and check for keys
     def rosLoop(self):
 
-        rate = rospy.Rate(10) # 10hz
+        rate = rospy.Rate(120) # 120hz #run at double regular monitors refresh rate
         while not rospy.is_shutdown():
             self.displayCondition(self.left_stimulus, self.right_stimulus)
             self.checkForKey(self.key_list)
@@ -104,46 +92,17 @@ class StimuliController:
         self.win0.flip()
         self.win1.flip()   
 
-    
-    ## Loop to be threaded, to allow constant monitoring of key press
-    def keyController(self):
-
-        key_list = ['right', 'left']
-        while True:
-            self.waitforKeyPress(key_list)
-
-    ## Blocking function to wait for keypress, also deals with quitting the application with 'q' or 'quit'
-    def waitforKeyPress(self, key_list):
-
-        key_list = key_list + ['quit', 'q']
-        print("Waiting for keypress")
-
-        self.kb.clock.reset()  # when you want to start the timer from
-        keys = self.kb.getKeys(key_list, waitRelease=False)
-
-        while len(keys) <= 0 :
-            keys = self.kb.getKeys(key_list, waitRelease=False)
-            if 'q' in keys:
-                print("quits")
-                core.quit()
-            for key in keys:
-                #print(key.name, key.rt, key.duration)
-                print("Keypress: ", key.name, " @ ", datetime.now() - self.time_start)
-
-        return keys
-
+    ## Check key presses, quit if q
     def checkForKey(self, key_list):
 
         key_list = key_list + ['quit', 'q']
-        print("Waiting for keypress")
-
         keys = self.kb.getKeys(key_list, waitRelease=False)
-        print(keys)
 
         if 'q' in keys:
             print("quits")
             core.quit()
         if len(keys) > 0:
+            print("RCVD keypress: ", keys)
             for key in keys:
                 self.pub_keypress.publish(key.name)
 
