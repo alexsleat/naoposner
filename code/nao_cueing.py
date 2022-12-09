@@ -23,15 +23,13 @@ import logging
 import threading
 import time
 
-# Read dummy images for stimuli
-blank = 255 * np.ones((512,512,3), np.uint8)
-#img0 = np.zeros((400, 400, 3), dtype = "uint8")
+# ROS
+import rospy
+from std_msgs.msg import String
 
-path0 = os.getcwd() + "/letter-t-512.jpg"
-letter_t = cv2.imread(path0, 0)
-
-path1 = os.getcwd() + "/letter-v-512.jpg"
-letter_v = cv2.imread(path1, 0)
+# 
+from optparse import OptionParser
+import configparser
 
 # For testing generate random numbers
 from random import randrange
@@ -45,9 +43,21 @@ from naoqi import ALProxy
 from naoqi import ALBroker
 from naoqi import ALModule
 
-from optparse import OptionParser
+PSYCHOPY_FLAG = True
+DEBUG_FLAG = True
 
-import configparser
+if PSYCHOPY_FLAG:
+    pass
+else:
+    # Read dummy images for stimuli
+    blank = 255 * np.ones((512,512,3), np.uint8)
+    #img0 = np.zeros((400, 400, 3), dtype = "uint8")
+
+    path0 = os.getcwd() + "/letter-t-512.jpg"
+    letter_t = cv2.imread(path0, 0)
+
+    path1 = os.getcwd() + "/letter-v-512.jpg"
+    letter_v = cv2.imread(path1, 0)
 
 ## Read the configurables from the config file
 config = configparser.ConfigParser()
@@ -59,7 +69,6 @@ NAO_PORT = int(config['NAO']['Port'])
 
 print(NAO_IP, type(NAO_IP))
 print(NAO_PORT, type(NAO_PORT))
-
 
 # Gloabl Variables to store the modules
 CommandExecuter = None
@@ -116,7 +125,16 @@ class CommandExecuterModule(ALModule):
         memory = ALProxy("ALMemory")
 
         # Tell the robot to "Crouch", stops over heating. Can be changed to "StandInit" if required for experiments
-        self.self.posture.goToPosture("Crouch", 1.0)
+        self.posture.goToPosture("Crouch", 1.0)
+
+        # ROS Pubs n subs:
+        self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
+        rospy.init_node('nao_cueing', anonymous=True)
+
+    def keypressCb(self, data):
+
+        print(data.data)
+        # @TODO add logging here for key presss
 
     def updateCoordinates(self,x,y,z):
         """Function that simply updates Parameters"""
@@ -150,9 +168,12 @@ def main():
     global CommandExecuter
     CommandExecuter = CommandExecuterModule("CommandExecuter")
 
-    cv2.imshow('Left Screen' , blank)
-    cv2.imshow('Right Screen', blank)
-    cv2.waitKey(1)
+    if PSYCHOPY_FLAG:
+        CommandExecuter.pub_stimulus.publish(" , ")
+    else:
+        cv2.imshow('Left Screen' , blank)
+        cv2.imshow('Right Screen', blank)
+        cv2.waitKey(1)
 
     # Plan to insert a stop here until the images are in positions on the Screens
     # Continue with user Input, signalling "Ready"
@@ -179,36 +200,60 @@ def main():
         # The seven possible positions
         if arg == 0:
             CommandExecuter.updateCoordinates(left_screen["x"], left_screen["y"], left_screen["z"])
-            cv2.imshow('Left Screen' , letter_t)
-            cv2.imshow('Right Screen', blank)
+            if PSYCHOPY_FLAG:
+                CommandExecuter.pub_stimulus.publish("t, ")
+            else:
+                cv2.imshow('Left Screen' , letter_t)
+                cv2.imshow('Right Screen', blank)
         if arg == 1:
             CommandExecuter.updateCoordinates(right_screen["x"], right_screen["y"], right_screen["z"])
-            cv2.imshow('Left Screen', letter_t)
-            cv2.imshow('Right Screen', blank)
+            if PSYCHOPY_FLAG:
+                CommandExecuter.pub_stimulus.publish("t, ")
+            else:
+                cv2.imshow('Left Screen', letter_t)
+                cv2.imshow('Right Screen', blank)
         if arg == 2:
             CommandExecuter.updateCoordinates(left_screen["x"], left_screen["y"], left_screen["z"])
-            cv2.imshow('Left Screen', blank)
-            cv2.imshow('Right Screen', letter_t)
+            if PSYCHOPY_FLAG:
+                CommandExecuter.pub_stimulus.publish(" ,t")
+            else:
+                cv2.imshow('Left Screen', blank)
+                cv2.imshow('Right Screen', letter_t)
         if arg == 3:
             CommandExecuter.updateCoordinates(right_screen["x"], right_screen["y"], right_screen["z"])
-            cv2.imshow('Left Screen' , blank)
-            cv2.imshow('Right Screen', letter_t)
+            if PSYCHOPY_FLAG:
+                CommandExecuter.pub_stimulus.publish(" ,t")
+            else:
+                cv2.imshow('Left Screen' , blank)
+                cv2.imshow('Right Screen', letter_t)
         if arg == 4:
             CommandExecuter.updateCoordinates(left_screen["x"], left_screen["y"], left_screen["z"])
-            cv2.imshow('Left Screen' , letter_v)
-            cv2.imshow('Right Screen', blank)
+            if PSYCHOPY_FLAG:
+                CommandExecuter.pub_stimulus.publish("v, ")
+            else:
+                cv2.imshow('Left Screen' , letter_v)
+                cv2.imshow('Right Screen', blank)
         if arg == 5:
             CommandExecuter.updateCoordinates(right_screen["x"], right_screen["y"], right_screen["z"])
-            cv2.imshow('Left Screen', letter_v)
-            cv2.imshow('Right Screen', blank)
+            if PSYCHOPY_FLAG:
+                CommandExecuter.pub_stimulus.publish("v, ")
+            else:
+                cv2.imshow('Left Screen', letter_v)
+                cv2.imshow('Right Screen', blank)
         if arg == 6:
             CommandExecuter.updateCoordinates(left_screen["x"], left_screen["y"], left_screen["z"])
-            cv2.imshow('Left Screen', blank)
-            cv2.imshow('Right Screen', letter_v)
+            if PSYCHOPY_FLAG:
+                CommandExecuter.pub_stimulus.publish(" ,v")
+            else:
+                cv2.imshow('Left Screen', blank)
+                cv2.imshow('Right Screen', letter_v)
         if arg == 7:
             CommandExecuter.updateCoordinates(right_screen["x"], right_screen["y"], right_screen["z"])
-            cv2.imshow('Left Screen' , blank)
-            cv2.imshow('Right Screen', letter_v)
+            if PSYCHOPY_FLAG:
+                CommandExecuter.pub_stimulus.publish(" ,v")
+            else:
+                cv2.imshow('Left Screen' , blank)
+                cv2.imshow('Right Screen', letter_v)
 
         # cv2.waitKey(n) will display a frame for n ms, after which display will be automatically closed.
         # This is also a variable that we have to tune for a practical trial
@@ -222,17 +267,23 @@ def main():
 	# print(arg)
 
     # Clear the Screens to prepare for new trial
-    cv2.imshow('Left Screen' , blank)
-    cv2.imshow('Right Screen', blank)
-    # cv2.waitKey(1)
+    if PSYCHOPY_FLAG:
+        CommandExecuter.pub_stimulus.publish(" , ")
+    else:
+        cv2.imshow('Left Screen' , blank)
+        cv2.imshow('Right Screen', blank)
+        # cv2.waitKey(1)
 
     # Wait 1s for the keypress to be processed
     time.sleep(1.0)
 
     # For dummy programm clear screens and end programm after one iteration
     # For the real deal we grab the vriables for the next block/trial from psychopy here
-    cv2.destroyAllWindows()
-    myBroker.shutdown()
+    if PSYCHOPY_FLAG:
+        CommandExecuter.pub_stimulus.publish("end,end")
+    else:
+        cv2.destroyAllWindows()
+    #myBroker.shutdown()
     sys.exit(0)
 
 if __name__ == '__main__':
