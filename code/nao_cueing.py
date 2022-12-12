@@ -45,6 +45,7 @@ from naoqi import ALModule
 
 PSYCHOPY_FLAG = True
 DEBUG_FLAG = True
+NAO_FLAG = True
 
 if PSYCHOPY_FLAG:
     pass
@@ -259,23 +260,23 @@ def main():
         # This is also a variable that we have to tune for a practical trial
         cv2.waitKey(time_stimulus_is_visible)
 
-    # After loop wait 500 ms (0.5s)before returning to rest position
-    # From what I got from the instructions, this block has to be in the loop above
-    # S.t. NAO Turns head -> Stimulus appears -> NAO returns to restposition
-    time.sleep(0.5)
-    CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, 0.6, False)
-	# print(arg)
+        # After loop wait 500 ms (0.5s)before returning to rest position
+        # From what I got from the instructions, this block has to be in the loop above
+        # S.t. NAO Turns head -> Stimulus appears -> NAO returns to restposition
+        time.sleep(0.5)
+        CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, 0.6, False)
+        # print(arg)
 
-    # Clear the Screens to prepare for new trial
-    if PSYCHOPY_FLAG:
-        CommandExecuter.pub_stimulus.publish(" , ")
-    else:
-        cv2.imshow('Left Screen' , blank)
-        cv2.imshow('Right Screen', blank)
-        # cv2.waitKey(1)
+        # Clear the Screens to prepare for new trial
+        if PSYCHOPY_FLAG:
+            CommandExecuter.pub_stimulus.publish(" , ")
+        else:
+            cv2.imshow('Left Screen' , blank)
+            cv2.imshow('Right Screen', blank)
+            # cv2.waitKey(1)
 
-    # Wait 1s for the keypress to be processed
-    time.sleep(1.0)
+        # Wait 1s for the keypress to be processed
+        time.sleep(1.0)
 
     # For dummy programm clear screens and end programm after one iteration
     # For the real deal we grab the vriables for the next block/trial from psychopy here
