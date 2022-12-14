@@ -5,15 +5,20 @@ This repository holds the Code for the ORU-KTH Collaboration.
 ## Running the docker:
 
 ### terminal 1:
+Start the docker, and run roscore (& sets it to background, so you can keep using the terminal)
 
     ./run_docker.sh
     roscore &
 
 ### terminal 2
+Each time you will need to attach the terminal to the docker, there's a script for that. Here we can then run the psychopy_ros script which acts as a "thin client" to change based on nao_cueing script. It should open full screen grey windows on 2 monitors - if not something is not working with the docker or the gpu drivers.
+
     . attach_docker.sh
     python3 psychopy_ros.py
 
 ### terminal 3
+Again attach and this time run the nao_cueing script
+
     . attach_docker.sh
     python2 nao_cueing.py
 
