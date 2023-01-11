@@ -24,8 +24,9 @@ class StimuliController:
         ## Setup screen
         self.win0 = visual.Window(self.screen_resolution, screen=0, fullscr=self.full_screen)
         self.win1 = visual.Window(self.screen_resolution, screen=1, fullscr=self.full_screen)
-        self.left_stimulus = ""
-        self.right_stimulus = ""
+
+        self.left_stimulus = ' '
+        self.right_stimulus = ' '
 
         self.key_list = ['right', 'left']
 
@@ -34,11 +35,9 @@ class StimuliController:
         rospy.Subscriber("stimulus", String, self.stimulusCb)
         self.pub_keypress = rospy.Publisher('keypress', String, queue_size=0)
 
-
         #self.preScreen()
         # Set the start time of the experiment
         self.time_start = datetime.now()
-
 
         self.displayCondition(' ',' ')
         self.rosLoop()
@@ -75,18 +74,37 @@ class StimuliController:
 
         rate = rospy.Rate(120) # 120hz #run at double regular monitors refresh rate
         while not rospy.is_shutdown():
-            self.displayCondition(self.left_stimulus, self.right_stimulus)
+            self.displayCondition(self.left_stimulus, self.right_stimulus, self.config['Screen']['TextOrImg'])
             self.checkForKey(self.key_list)
             rate.sleep()
 
     ## Display a single condition:
-    def displayCondition(self, left, right):
+    def displayCondition(self, left, right, text_or_img="img"):
 
         if left and right != " ":
             print("Display Condition : ", left, right)
 
+        # Draw a white rect for the background
+        msg0_bg = visual.rect.Rect(self.win0, size=(800,600), fillColor='white')
+        msg1_bg = visual.rect.Rect(self.win1, size=(800,600), fillColor='white')
+        msg0_bg.draw()
+        msg1_bg.draw()
+
+        # Draw the text response, this will be overwritten if the img option is set:
         msg0_msg = visual.TextStim(self.win0, text=left)
         msg1_msg = visual.TextStim(self.win1, text=right)
+
+        # If the img option is set, load the images based on the stimulus provided:
+        if text_or_img == "img":
+            if left != ' ': 
+                left_img = "letter-" + str(left) + "-512.jpg"
+                print("left img:: ", left_img)
+                msg0_msg = visual.ImageStim(self.win0, left_img) # set image
+            if right != ' ': 
+                right_img = "letter-" + str(right) + "-512.jpg"
+                msg1_msg = visual.ImageStim(self.win1, right_img) # set image            
+
+        # Draw and flip:
         msg0_msg.draw()
         msg1_msg.draw()
         self.win0.flip()

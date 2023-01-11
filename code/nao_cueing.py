@@ -100,6 +100,7 @@ class CommandExecuterModule(ALModule):
 
     def __init__(self,name):
 
+        # Change for head turning speed:
         self.maxSpeed = 0.6
 
         self.x = 0.0
@@ -264,7 +265,7 @@ def main():
         # From what I got from the instructions, this block has to be in the loop above
         # S.t. NAO Turns head -> Stimulus appears -> NAO returns to restposition
         time.sleep(0.5)
-        CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, 0.6, False)
+        CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, CommandExecuter.maxSpeed, False)
         # print(arg)
 
         # Clear the Screens to prepare for new trial
