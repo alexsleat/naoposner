@@ -74,6 +74,7 @@ class StimuliController:
 
         rate = rospy.Rate(120) # 120hz #run at double regular monitors refresh rate
         while not rospy.is_shutdown():
+
             self.displayCondition(self.left_stimulus, self.right_stimulus, self.config['Screen']['TextOrImg'])
             self.checkForKey(self.key_list)
             rate.sleep()
