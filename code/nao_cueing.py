@@ -140,6 +140,8 @@ class CommandExecuterModule(ALModule):
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
         self.pub_logger = rospy.Publisher('logger', String, queue_size=0)
+
+        self.sub_keypress = rospy.Subscriber('keypress', String, self.keypressCb)
         rospy.init_node('nao_cueing', anonymous=True)
 
     def keypressCb(self, data):
@@ -274,6 +276,7 @@ class NaoPosnerExperiment():
             counter = counter + 1
 
         self.nao_rest()
+        time.sleep(0.5)
         print("LAST BLOCK COMPELTE total number of trials for this participant: {}".format(len(list_block)))
 
     # Generate all blocks

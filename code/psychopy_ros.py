@@ -122,8 +122,12 @@ class StimuliController:
             core.quit()
         if len(keys) > 0:
             print("RCVD keypress: ", keys)
+
             for key in keys:
-                self.pub_keypress.publish(key.name)
+                now = datetime.now()
+                key_info = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+                key_logger =  "KeyPress,{},{}".format(str(key.name), str(key_info))
+                self.pub_keypress.publish(key_logger)
 
 
 if __name__ == "__main__":
