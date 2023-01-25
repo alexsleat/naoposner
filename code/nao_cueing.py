@@ -82,7 +82,7 @@ memory = None
 
 # Scale how much time should pass between each stimuli/rotation cycle
 # Offset + Wait is duration between stimuli
-offset = 0.8
+offset = 0.1
 wait = 0.2
 
 # That is the duration of how long it takes to rotate NAOS head
@@ -108,9 +108,15 @@ class CommandExecuterModule(ALModule):
         # Change for head turning speed:
         self.maxSpeed = 0.3
 
-        self.x = 0.0
+        self.x = 1.0
         self.y = 0.0
-        self.z = 0.0
+        self.z = 0.1
+
+        self.old_x = 0.0
+        self.old_y = 0.0
+        self.old_z = 0.0
+
+        self.alive = True
 
         ALModule.__init__(self,name)
         # No need for IP Adress bc PyBroker connected to Naoqi PyBroker
@@ -136,6 +142,7 @@ class CommandExecuterModule(ALModule):
 
         # Tell the robot to "Crouch", stops over heating. Can be changed to "StandInit" if required for experiments
         self.posture.goToPosture("Crouch", 1.0)
+        time.sleep(3)
 
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
@@ -161,18 +168,28 @@ class CommandExecuterModule(ALModule):
         # Write a function, which sets the Parameters for those kind of movements
         # self.updateCoordinates(1.0, -2.5, 0.8)
 
-        self.useWholeBody = False
-        self.frame = 0 #0 - TORSO, 1 - World, 2- Robot
-        now = datetime.now()
-        head_info1 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
-        # head_logger = "Head turned at: {}".format(str(head_info))
-        # self.pub_logger.publish(head_logger)
+        while(self.alive):
 
-        self.tracker.lookAt([self.x, self.y, self.z], self.frame, self.maxSpeed, self.useWholeBody)
-        now = datetime.now()
-        head_info2 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
-        head_logger =  "HeadTurn,{},{}".format(str(head_info1), str(head_info2))
-        self.pub_logger.publish(head_logger)
+            if self.y != self.old_y:
+
+                self.old_x = self.x
+                self.old_y = self.y
+                self.old_z = self.z
+
+                print("Head turning: {},{},{}".format(str(self.x), str(self.y), str(self.z)))
+
+                self.useWholeBody = False
+                self.frame = 0 #0 - TORSO, 1 - World, 2- Robot
+                now = datetime.now()
+                head_info1 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+                # head_logger = "Head turned at: {}".format(str(head_info))
+                # self.pub_logger.publish(head_logger)
+
+                self.tracker.lookAt([self.x, self.y, self.z], self.frame, self.maxSpeed, self.useWholeBody)
+                now = datetime.now()
+                head_info2 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+                head_logger =  "HeadTurn,{},{}".format(str(head_info1), str(head_info2))
+                self.pub_logger.publish(head_logger)
 
     def flash_eyes(self, color=None):
 
@@ -217,6 +234,17 @@ class NaoPosnerExperiment():
     ## Alternative method to Main:
     def play_block(self, warmup = True, num_blocks = 5):
 
+
+        # # At the beginning of the loop start the thread
+        try:
+            # Define a thread parallel to the main one
+            # Thread runs the function that controlls NAOs head
+            t1 = threading.Timer(offset, self.CommandExecuter.onCallLook)
+        except KeyboardInterrupt:
+            print ("Interrupted by us ... Shutdown")
+        t1.start()
+        time.sleep(offset + duration + delay)
+
         self.CommandExecuter.pub_stimulus.publish(" , ")
         time.sleep(1)
 
@@ -233,15 +261,15 @@ class NaoPosnerExperiment():
             self.nao_rest()
             start_time = self.get_formatted_datetime()
             self.participant_interface("Trial")
-            # At the beginning of the loop start the thread
-            try:
-                # Define a thread parallel to the main one
-                # Thread runs the function that controlls NAOs head
-                t1 = threading.Timer(offset, self.CommandExecuter.onCallLook)
-            except KeyboardInterrupt:
-                print ("Interrupted by us ... Shutdown")
-            t1.start()
-            time.sleep(offset + duration + delay)
+            # # At the beginning of the loop start the thread
+            # try:
+            #     # Define a thread parallel to the main one
+            #     # Thread runs the function that controlls NAOs head
+            #     t1 = threading.Timer(offset, self.CommandExecuter.onCallLook)
+            # except KeyboardInterrupt:
+            #     print ("Interrupted by us ... Shutdown")
+            # t1.start()
+            # time.sleep(offset + duration + delay)
 
             # Counter to keep track of trial, blocks etc and sort out the warmup trials
             if(warmup and counter == 10) or (counter == 8 and not warmup):
@@ -278,6 +306,7 @@ class NaoPosnerExperiment():
         self.nao_rest()
         time.sleep(0.5)
         print("LAST BLOCK COMPELTE total number of trials for this participant: {}".format(len(list_block)))
+        self.CommandExecuter.alive = False
 
     # Generate all blocks
     ### Geneate a set of all 8 combinations (2x2x2), multiply by the total number of blocks in the trial, and add 2 for warmup to the first block
@@ -313,20 +342,21 @@ class NaoPosnerExperiment():
     # Nao Rest
     ## Send to neutral pose
     def nao_rest(self):
-            self.CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, self.CommandExecuter.maxSpeed, False)
+            # self.CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, self.CommandExecuter.maxSpeed, False)
+            self.CommandExecuter.updateCoordinates(rest_position["x"], rest_position["y"], rest_position["z"])
             self.CommandExecuter.pub_stimulus.publish(" , ")
 
     # Nao Move
     ## Send to the correct position, and send sequence to display to psychopy
     def nao_move(self, t):
 
-        dir_to_look = (left_screen["x"], left_screen["y"], left_screen["z"])
+        dir_to_look = (right_screen["x"], right_screen["y"], right_screen["z"])
         str_to_display = "N/A"
 
         # Check Left direction and congruency:
         if(t[0] == "L"):
             if(t[2] != "C"):
-                dir_to_look = (right_screen["x"], right_screen["y"], right_screen["z"])
+                dir_to_look = (left_screen["x"], left_screen["y"], left_screen["z"])
             # Check what value to display:
             if(t[1] == "T"):
                 str_to_display = "t, "
@@ -335,7 +365,7 @@ class NaoPosnerExperiment():
         # Check Right direction and congruency:
         else:
             if(t[2] == "C"):
-                dir_to_look = (right_screen["x"], right_screen["y"], right_screen["z"])
+                dir_to_look = (left_screen["x"], left_screen["y"], left_screen["z"])
             # Check what value to display:
             if(t[1] == "T"):
                 str_to_display = " ,t"
@@ -344,6 +374,8 @@ class NaoPosnerExperiment():
 
         # update coordinates, and publish the stimuli
         self.CommandExecuter.updateCoordinates(dir_to_look[0], dir_to_look[1], dir_to_look[2] )
+        # self.CommandExecuter.tracker.lookAt([dir_to_look[0], dir_to_look[1], dir_to_look[2]], 0, self.CommandExecuter.maxSpeed, False)
+
         self.CommandExecuter.pub_stimulus.publish(str_to_display)
 
     # Function to wait for user input -> Signalling readiness
@@ -403,5 +435,10 @@ if __name__ == '__main__':
     #main()
     e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
     e.create_new_aprticipant()
-    e.play_block(True, 3)
+    e.nao_rest()
+    time.sleep(2)
+    try:
+        e.play_block(True, 2)
+    except Exception as e:
+        e.CommandExecuter.alive = False
     e.nao_rest()
