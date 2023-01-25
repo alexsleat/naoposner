@@ -27,7 +27,7 @@ import time
 import rospy
 from std_msgs.msg import String
 
-# 
+#
 from optparse import OptionParser
 import configparser
 
@@ -44,6 +44,9 @@ from naoqi import ALBroker
 from naoqi import ALModule
 
 import itertools, random
+
+# To logg correct timestamps
+from datetime import datetime
 
 PSYCHOPY_FLAG = True
 DEBUG_FLAG = True
@@ -124,6 +127,9 @@ class CommandExecuterModule(ALModule):
         self.player = ALProxy('ALAudioPlayer')
         self.playerStop = ALProxy('ALAudioPlayer', True) #Create another proxy as wait is blocking if audioout is remote
 
+        self.led_controller = ALProxy("ALLeds")
+        self.flash_duration = 2 # Adjustable
+        self.delay_between_trials = 1 # Setbased on Lucas preferences
 
         global memory
         memory = ALProxy("ALMemory")
@@ -133,10 +139,10 @@ class CommandExecuterModule(ALModule):
 
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
+        self.pub_logger = rospy.Publisher('logger', String, queue_size=0)
         rospy.init_node('nao_cueing', anonymous=True)
 
     def keypressCb(self, data):
-
         print(data.data)
         # @TODO add logging here for key presss
 
@@ -155,144 +161,40 @@ class CommandExecuterModule(ALModule):
 
         self.useWholeBody = False
         self.frame = 0 #0 - TORSO, 1 - World, 2- Robot
+        now = datetime.now()
+        head_info1 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+        # head_logger = "Head turned at: {}".format(str(head_info))
+        # self.pub_logger.publish(head_logger)
 
         self.tracker.lookAt([self.x, self.y, self.z], self.frame, self.maxSpeed, self.useWholeBody)
+        now = datetime.now()
+        head_info2 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+        head_logger =  "HeadTurn,{},{}".format(str(head_info1), str(head_info2))
+        self.pub_logger.publish(head_logger)
 
-# def main():
-#     """Main entry Point"""
+    def flash_eyes(self, color=None):
 
-#     # Name must match variable name
-#     myBroker = ALBroker("myBroker",
-#     "0.0.0.0",
-#     0,
-#     NAO_IP,
-#     NAO_PORT)
+        sGroup = "FaceLeds"
 
-#     # Name must match variable name
-#     global CommandExecuter
-#     CommandExecuter = CommandExecuterModule("CommandExecuter")
+        if color == "blue":
+            duration = self.delay_between_trials
+        else:
+            duration = self.flash_duration
+        p = color
 
-#     if PSYCHOPY_FLAG:
-#         CommandExecuter.pub_stimulus.publish(" , ")
-#     else:
-#         cv2.imshow('Left Screen' , blank)
-#         cv2.imshow('Right Screen', blank)
-#         cv2.waitKey(1)
+        self.ids = []
+        self.leds = ALProxy("ALLeds")
+        sGroup = "FaceLeds"
 
-#     # Plan to insert a stop here until the images are in positions on the Screens
-#     # Continue with user Input, signalling "Ready"
-#     # raw_input("Press Enter to continue...") # Waits for Enter to be pressed but is not robust
-
-#     # Perform a certain amount of trials
-#     for i in range(10):
-
-#         arg = randrange(8)
-
-#         try:
-#             # Define a thread parallel to the main one
-#             # Thread runs the function that controlls NAOs head
-#             t1 = threading.Timer(offset, CommandExecuter.onCallLook)
-#         except KeyboardInterrupt:
-#             print ("Interrupted by us ... Shutdown")
-
-#         # At the beginning of the loop start the thread
-#         t1.start()
-#         # Wait a given time until updating the screens
-#         # To get the behavior wanted: Spin Head and then Stimulus
-#         time.sleep(offset + duration + delay)
-
-#         # The seven possible positions
-#         if arg == 0:
-#             CommandExecuter.updateCoordinates(left_screen["x"], left_screen["y"], left_screen["z"])
-#             if PSYCHOPY_FLAG:
-#                 CommandExecuter.pub_stimulus.publish("t, ")
-#             else:
-#                 cv2.imshow('Left Screen' , letter_t)
-#                 cv2.imshow('Right Screen', blank)
-#         if arg == 1:
-#             CommandExecuter.updateCoordinates(right_screen["x"], right_screen["y"], right_screen["z"])
-#             if PSYCHOPY_FLAG:
-#                 CommandExecuter.pub_stimulus.publish("t, ")
-#             else:
-#                 cv2.imshow('Left Screen', letter_t)
-#                 cv2.imshow('Right Screen', blank)
-#         if arg == 2:
-#             CommandExecuter.updateCoordinates(left_screen["x"], left_screen["y"], left_screen["z"])
-#             if PSYCHOPY_FLAG:
-#                 CommandExecuter.pub_stimulus.publish(" ,t")
-#             else:
-#                 cv2.imshow('Left Screen', blank)
-#                 cv2.imshow('Right Screen', letter_t)
-#         if arg == 3:
-#             CommandExecuter.updateCoordinates(right_screen["x"], right_screen["y"], right_screen["z"])
-#             if PSYCHOPY_FLAG:
-#                 CommandExecuter.pub_stimulus.publish(" ,t")
-#             else:
-#                 cv2.imshow('Left Screen' , blank)
-#                 cv2.imshow('Right Screen', letter_t)
-#         if arg == 4:
-#             CommandExecuter.updateCoordinates(left_screen["x"], left_screen["y"], left_screen["z"])
-#             if PSYCHOPY_FLAG:
-#                 CommandExecuter.pub_stimulus.publish("v, ")
-#             else:
-#                 cv2.imshow('Left Screen' , letter_v)
-#                 cv2.imshow('Right Screen', blank)
-#         if arg == 5:
-#             CommandExecuter.updateCoordinates(right_screen["x"], right_screen["y"], right_screen["z"])
-#             if PSYCHOPY_FLAG:
-#                 CommandExecuter.pub_stimulus.publish("v, ")
-#             else:
-#                 cv2.imshow('Left Screen', letter_v)
-#                 cv2.imshow('Right Screen', blank)
-#         if arg == 6:
-#             CommandExecuter.updateCoordinates(left_screen["x"], left_screen["y"], left_screen["z"])
-#             if PSYCHOPY_FLAG:
-#                 CommandExecuter.pub_stimulus.publish(" ,v")
-#             else:
-#                 cv2.imshow('Left Screen', blank)
-#                 cv2.imshow('Right Screen', letter_v)
-#         if arg == 7:
-#             CommandExecuter.updateCoordinates(right_screen["x"], right_screen["y"], right_screen["z"])
-#             if PSYCHOPY_FLAG:
-#                 CommandExecuter.pub_stimulus.publish(" ,v")
-#             else:
-#                 cv2.imshow('Left Screen' , blank)
-#                 cv2.imshow('Right Screen', letter_v)
-
-#         # cv2.waitKey(n) will display a frame for n ms, after which display will be automatically closed.
-#         # This is also a variable that we have to tune for a practical trial
-#         cv2.waitKey(time_stimulus_is_visible)
-
-#         # After loop wait 500 ms (0.5s)before returning to rest position
-#         # From what I got from the instructions, this block has to be in the loop above
-#         # S.t. NAO Turns head -> Stimulus appears -> NAO returns to restposition
-#         time.sleep(0.5)
-#         CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, CommandExecuter.maxSpeed, False)
-#         # print(arg)
-
-#         # Clear the Screens to prepare for new trial
-#         if PSYCHOPY_FLAG:
-#             CommandExecuter.pub_stimulus.publish(" , ")
-#         else:
-#             cv2.imshow('Left Screen' , blank)
-#             cv2.imshow('Right Screen', blank)
-#             # cv2.waitKey(1)
-
-#         # Wait 1s for the keypress to be processed
-#         time.sleep(1.0)
-
-#     # For dummy programm clear screens and end programm after one iteration
-#     # For the real deal we grab the vriables for the next block/trial from psychopy here
-#     if PSYCHOPY_FLAG:
-#         CommandExecuter.pub_stimulus.publish("end,end")
-#     else:
-#         cv2.destroyAllWindows()
-#     #myBroker.shutdown()
-#     sys.exit(0)
+        #id = self.leds.post.fadeRGB(sGroup, float(p[0])/255, float(p[1])/255, float(p[2])/255, duration)
+        id = self.leds.post.fadeRGB(sGroup, p, duration)
+        self.ids.append(id)
+        self.leds.wait(id, 0)
+        self.ids.remove(id)
 
 
-# Main Function for Experiment
-class Experiment():
+# Main Function for NaoPosner Experiment
+class NaoPosnerExperiment():
 
     def __init__(self, naoip, naoport):
 
@@ -305,6 +207,10 @@ class Experiment():
 
         self.CommandExecuter = CommandExecuterModule("CommandExecuter")
 
+        self.block_ready_color = "green"
+        self.trial_ready_color = "blue"
+        self.trial_number = 1
+
     # Play block:
     ## Alternative method to Main:
     def play_block(self, warmup = True, num_blocks = 5):
@@ -313,13 +219,18 @@ class Experiment():
         time.sleep(1)
 
         # Generate & randomize the full block:
-        list_block = self.generate_all_block(warmup, num_blocks)
+        list_block, block_types = self.generate_all_block(warmup, num_blocks)
 
         # Run through a full trial:
         counter = 0
-        trial_num = 1
-        for t in (list_block):
+        block_num = 1
 
+        self.participant_interface("Block")
+
+        for t in (list_block):
+            self.nao_rest()
+            start_time = self.get_formatted_datetime()
+            self.participant_interface("Trial")
             # At the beginning of the loop start the thread
             try:
                 # Define a thread parallel to the main one
@@ -328,23 +239,20 @@ class Experiment():
             except KeyboardInterrupt:
                 print ("Interrupted by us ... Shutdown")
             t1.start()
-
-            self.nao_rest()
             time.sleep(offset + duration + delay)
 
             # Counter to keep track of trial, blocks etc and sort out the warmup trials
             if(warmup and counter == 10) or (counter == 8 and not warmup):
-                print("BLOCK " + str(trial_num) + " Complete")
+                print("BLOCK " + str(block_num) + " Complete")
 
                 counter = 0
-                trial_num = trial_num + 1
+                block_num = block_num + 1
                 warmup = False
 
+                self.participant_interface("Block")
                 ## @TODO replace this with input to start the next trail, not just wait 5s:
-                time.sleep(5)
 
 
-            print(t)
             # Perform the movements based on the current trial:
             self.nao_move(t)
 
@@ -353,10 +261,21 @@ class Experiment():
             self.nao_rest()
             time.sleep(1)
 
+            end_time = self.get_formatted_datetime()
+            #print(t, start_time, end_time, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, block_types[block_num-1], self.PID, self.AGE)
+            information_to_publish = [self.PID, self.AGE, start_time, end_time, block_types[block_num-1], self.get_trial_type(t[1], t[0], t[2]), self.trial_number]
+            log_string = str(t[0])+","+str(t[1])+","+str(t[2])+","
+            for info in information_to_publish:
+                log_string += (str(info)+",")
+            #print(log_string)
+            self.CommandExecuter.pub_logger.publish(log_string)
+
+            self.trial_number += 1
             counter = counter + 1
 
-        print(len(list_block))
-        
+        self.nao_rest()
+        print("LAST BLOCK COMPELTE total number of trials for this participant: {}".format(len(list_block)))
+
     # Generate all blocks
     ### Geneate a set of all 8 combinations (2x2x2), multiply by the total number of blocks in the trial, and add 2 for warmup to the first block
     def generate_all_block(self, warmup=True, num_blocks=1):
@@ -382,8 +301,12 @@ class Experiment():
             list_block.insert(0, (random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
             list_block.insert(0, (random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
 
-        return list_block
-        
+        # Create list of possible block types
+        block_type = "N/A"
+        block_types= num_blocks*[block_type]
+
+        return list_block, block_types
+
     # Nao Rest
     ## Send to neutral pose
     def nao_rest(self):
@@ -395,7 +318,7 @@ class Experiment():
     def nao_move(self, t):
 
         dir_to_look = (left_screen["x"], left_screen["y"], left_screen["z"])
-        str_to_display = " , "
+        str_to_display = "N/A"
 
         # Check Left direction and congruency:
         if(t[0] == "L"):
@@ -418,11 +341,64 @@ class Experiment():
 
         # update coordinates, and publish the stimuli
         self.CommandExecuter.updateCoordinates(dir_to_look[0], dir_to_look[1], dir_to_look[2] )
-        self.CommandExecuter.pub_stimulus.publish(str_to_display)    
+        self.CommandExecuter.pub_stimulus.publish(str_to_display)
+
+    # Function to wait for user input -> Signalling readiness
+    def participant_interface(self, ready_for = None):
+
+        if ready_for == "Block":
+            user_input = raw_input("Press 'y' if you are ready for a block:\t")
+
+            if user_input != 'y':
+                print("You are not ready, please try again")
+                participant_interface(ready_for)
+
+            print("Participant signaled readiness, proceed with next block")
+            self.nao_rest()
+
+            self.CommandExecuter.flash_eyes("green")
+            return
+
+        if ready_for == "Trial":
+            self.CommandExecuter.flash_eyes("blue")
+            return
+
+    def get_formatted_datetime(self):
+        # Method if we want to do the timing over rospy
+        # now = rospy.Time.now()
+        # secs = now.secs
+        # nsecs = now.nsecs
+        # dt = datetime.fromtimestamp(secs)
+        # dt_str = dt.strftime("%d.%m.%y-%Hh%Mm%Ss")
+        # return dt_str + str(int(nsecs/1000000)).zfill(6)
+
+        now = datetime.now()
+        return now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+
+    def get_trial_type(self, letter, gaze_direction, congruency):
+        # Create a dictionary that maps the combination of letter, gaze_direction, and congruency to an integer
+        trial_type_map = {
+            "TLC": 1,
+            "TLI": 2,
+            "TRC": 3,
+            "TRI": 4,
+            "VLC": 5,
+            "VLI": 6,
+            "VRC": 7,
+            "VRI": 8
+                }
+        # Concatenate the input variables to create the key for the dictionary
+        key = letter + gaze_direction + congruency
+        # Return the integer value associated with the key
+        return trial_type_map[key]
+
+    def create_new_aprticipant(self):
+        self.PID = raw_input("Experimenter: Enter the participants ID (PID)")
+        self.AGE = raw_input("Experimenter: Enter the participants age(AGE)")
 
 if __name__ == '__main__':
-
     #main()
-
-    e = Experiment(NAO_IP, NAO_PORT)
-    e.play_block(True, 2)
+    e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
+    e.create_new_aprticipant()
+    e.play_block(True, 3)
+    e.nao_rest()
