@@ -229,6 +229,7 @@ class NaoPosnerExperiment():
         self.block_ready_color = "green"
         self.trial_ready_color = "blue"
         self.trial_number = 1
+        self.block_type = "N/A"
 
     # Play block:
     ## Alternative method to Main:
@@ -293,7 +294,7 @@ class NaoPosnerExperiment():
 
             end_time = self.get_formatted_datetime()
             #print(t, start_time, end_time, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, block_types[block_num-1], self.PID, self.AGE)
-            information_to_publish = [self.PID, self.AGE, start_time, end_time, block_types[block_num-1], self.get_trial_type(t[1], t[0], t[2]), self.trial_number]
+            information_to_publish = [self.PID, self.AGE, start_time, end_time, self.block_type, self.get_trial_type(t[1], t[0], t[2]), self.trial_number]
             log_string = str(t[0])+","+str(t[1])+","+str(t[2])+","
             for info in information_to_publish:
                 log_string += (str(info)+",")
@@ -382,17 +383,19 @@ class NaoPosnerExperiment():
     def participant_interface(self, ready_for = None):
 
         if ready_for == "Block":
-            user_input = raw_input("Press 'y' if you are ready for a block:\t")
+            user_input = raw_input("Press 'o' for occluded block, b for baseline:\t")
 
-            if user_input != 'y':
+            if (user_input == 'b') or (user_input == 'o'):
+                self.block_type = user_input
+
+                print("Ready for next block, proceed with next block")
+                self.nao_rest()
+
+                self.CommandExecuter.flash_eyes("green")
+                return
+            else:
                 print("You are not ready, please try again")
-                participant_interface(ready_for)
-
-            print("Participant signaled readiness, proceed with next block")
-            self.nao_rest()
-
-            self.CommandExecuter.flash_eyes("green")
-            return
+                self.participant_interface(ready_for)
 
         if ready_for == "Trial":
             self.CommandExecuter.flash_eyes("blue")
