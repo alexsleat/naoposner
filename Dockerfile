@@ -87,7 +87,7 @@ RUN apt-get install -y python-dev libffi-dev python3-dev
 ## Temp install opencv for pip2
 RUN pip2 install opencv-python==4.2.0.32
 RUN pip2 install configparser
-RUN apt-get install -y install iputils-ping vim
+RUN apt-get install -y iputils-ping vim
 
 # Install Psychopy -- not currently working via pip3
 #RUN pip3 install psychopy --no-deps
