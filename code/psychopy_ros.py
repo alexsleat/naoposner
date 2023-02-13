@@ -22,8 +22,8 @@ class StimuliController:
         self.kb = keyboard.Keyboard()
 
         ## Setup screen
-        self.win0 = visual.Window(self.screen_resolution, screen=0, fullscr=self.full_screen)
-        self.win1 = visual.Window(self.screen_resolution, screen=1, fullscr=self.full_screen)
+        self.win0 = visual.Window(self.screen_resolution, screen=1, fullscr=self.full_screen)
+        self.win1 = visual.Window(self.screen_resolution, screen=2, fullscr=self.full_screen)
 
         self.left_stimulus = ' '
         self.right_stimulus = ' '

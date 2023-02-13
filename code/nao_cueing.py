@@ -150,6 +150,8 @@ class CommandExecuterModule(ALModule):
         self.posture.goToPosture("Crouch", 1.0)
         time.sleep(3)
 
+        self.dt_comand_key = 42
+
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
         self.pub_logger = rospy.Publisher('logger', String, queue_size=0)
@@ -179,6 +181,7 @@ class CommandExecuterModule(ALModule):
 
             if self.dt_comand_key < 2:
                 self.valid_trial = True
+                self.dt_comand_key = 42
                 return None
             else:
                 time.sleep(0.02)
@@ -192,11 +195,11 @@ class CommandExecuterModule(ALModule):
         # @TODO add logging here for key presss
 
         # Parse the message string
-        key_press = data.data.split(', ')
+        key_press = data.data.split(',')
 
         # Store the key press data in member variables
-        self.last_key_timestamp = key_press[1]
-        self.key_name = key_press[2]
+        self.last_key_timestamp = key_press[2]
+        self.key_name = key_press[1]
 
         dt1 = datetime.strptime(self.head_info2, '%d.%m.%y-%Hh%Mm%Ss%fns')
         dt2 = datetime.strptime(self.last_key_timestamp, '%d.%m.%y-%Hh%Mm%Ss%fns')
@@ -204,8 +207,9 @@ class CommandExecuterModule(ALModule):
         # @TODO only do this when the key is pressed participants should press
         # Replace the True with self.key_name == participants_key
         self.dt_comand_key = (dt2 - dt1).total_seconds()
-        if self.key_name == self.participant_key:
-            self.reaction_times.append(self.dt_comand_key)
+        # if self.key_name in self.participant_key:
+        #     self.reaction_times.append(self.dt_comand_key)
+        self.reaction_times.append(self.dt_comand_key)
 
     def updateCoordinates(self,x,y,z):
         """Function that simply updates Parameters"""
@@ -303,6 +307,8 @@ class NaoPosnerExperiment():
             t1 = threading.Timer(offset, self.CommandExecuter.onCallLook)
         except KeyboardInterrupt:
             print ("Interrupted by us ... Shutdown")
+
+        self.CommandExecuter.dt_comand_key = 42
         t1.start()
         time.sleep(offset + duration + delay)
 
@@ -320,8 +326,9 @@ class NaoPosnerExperiment():
 
         for t in (list_block):
             # get NAO to start in resting position
-            if not self.CommandExecuter.resting:
-                self.nao_rest()
+            # if not self.CommandExecuter.resting:
+            #     self.nao_rest()
+            # self.nao_rest()
             start_time = self.get_formatted_datetime()
             self.participant_interface("Trial")
             # # At the beginning of the loop start the thread
@@ -351,8 +358,9 @@ class NaoPosnerExperiment():
 
             # Wait some time, go to rest pose, wait again:
             self.CommandExecuter.wait_for_keypress_or_2s()
-            self.nao_rest()
             time.sleep(1-self.timing_for_head_turn)
+            self.nao_rest()
+            
 
             end_time = self.get_formatted_datetime()
             #print(t, start_time, end_time, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, block_types[block_num-1], self.PID, self.AGE)
@@ -372,13 +380,15 @@ class NaoPosnerExperiment():
             counter = counter + 1
             self.num_trials += 1
 
-        if not self.CommandExecuter.resting:
-            self.nao_rest()
+        # if not self.CommandExecuter.resting:
+        #     self.nao_rest()
+        self.nao_rest()
+
         time.sleep(0.5)
         print("LAST BLOCK COMPELTE total number of trials for this participant: {}".format(len(list_block)))
         reaction_times = np.array([self.CommandExecuter.reaction_times])
-        print(f"Mean reaction times: {np.round(np.mean(reaction_times), 2)}")
-        print(f"{np.round((self.corr_trials/self.num_trials), 4)*100}% of Trials were valid")
+        print("Mean reaction times: {}".format(np.round(np.mean(reaction_times), 2)))
+        print("{} Perc. of Trials were valid".format(np.round((float(self.corr_trials)/float(self.num_trials)), 4)*100))
         self.CommandExecuter.alive = False
 
     # Generate all blocks
@@ -511,30 +521,38 @@ if __name__ == '__main__':
     # # Start a ROS node that will run in parallel to the main loop
     # rospy.init_node('my_node')
 
-    #main()
-    e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
-    e.create_new_aprticipant()
-    e.nao_rest()
-    time.sleep(2)
+    while not rospy.is_shutdown():
 
-    # # Create a new parallel thread for the ROS subscription
-    # def ros_thread():
-    #     rospy.Subscriber('keypress', String, e.key_callback)
-    #     rospy.spin()
+        #main()
+        e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
+        e.create_new_aprticipant()
+        e.nao_rest()
+        time.sleep(2)
 
-    # thread = threading.Thread(target=ros_thread)
-    # thread.start()
+        # # Create a new parallel thread for the ROS subscription
+        # def ros_thread():
+        #     rospy.Subscriber('keypress', String, e.key_callback)
+        #     rospy.spin()
 
-    # Run the main loop with the blocks and trials
-    try:
+        # thread = threading.Thread(target=ros_thread)
+        # thread.start()
+
+        # Run the main loop with the blocks and trials
         e.play_block(True, 2)
-    except Exception as e:
-        e.CommandExecuter.alive = False
-    e.nao_rest()
 
-    # # Wait until ending the programm, before the ROS thread finished
-    # thread.join()
+        # try:
+        #     e.play_block(True, 2)
+        # except Exception as expt:
+        #     print(expt)
+        #     e.CommandExecuter.alive = False
+        # e.nao_rest()
+
+        # # Wait until ending the programm, before the ROS thread finished
+        # thread.join()
 
     # # Clean up
     # e.nao_rest()
     # rospy.signal_shutdown('Done')
+
+    e.myBroker.shutdown()
+    sys.exit(0)

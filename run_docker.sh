@@ -24,7 +24,6 @@ docker run \
     --device /dev/dri \
     --device /dev/snd \
     --env="QT_X11_NO_MITSHM=1" \
-    --runtime=nvidia \
     -v /run/user/1000/pulse:/run/user/1000/pulse \
     -v /tmp/.X11-unix:/tmp/.X11-unix:rw \
     -e HOST_UID=$(id -u) -e HOST_GID=$(id -g) \
