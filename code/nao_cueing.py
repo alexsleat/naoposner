@@ -117,6 +117,12 @@ class CommandExecuterModule(ALModule):
         self.old_z = 0.0
 
         self.alive = True
+        self.resting = True
+
+        self.reaction_times = []
+
+        global config 
+        self.participant_key = str(config['Timing']['ParticipantKey'])
 
         ALModule.__init__(self,name)
         # No need for IP Adress bc PyBroker connected to Naoqi PyBroker
@@ -151,15 +157,62 @@ class CommandExecuterModule(ALModule):
         self.sub_keypress = rospy.Subscriber('keypress', String, self.keypressCb)
         rospy.init_node('nao_cueing', anonymous=True)
 
+    def wait_for_keypress_or_2s(self):
+        """
+            This function will process the given timestamp of when NAO turned the head.
+            Wait time can be adopted by changing the loop boundaries.
+            Currently its 100*0.02s = 2s
+
+            in:
+            - Naos timestamp in datetime format
+
+            return: None
+            Function will wait for 2s or until key is pressed.            
+        """
+
+        i = 0
+
+        # Loop is idle for 2s waiting for participants to press key
+        # @Alex maybe we should run this in a thread as well ?
+
+        while(i<100):
+
+            if self.dt_comand_key < 2:
+                self.valid_trial = True
+                return None
+            else:
+                time.sleep(0.02)
+                i += 1
+
+        self.valid_trial = False
+        return None
+
     def keypressCb(self, data):
         print(data.data)
         # @TODO add logging here for key presss
+
+        # Parse the message string
+        key_press = data.data.split(', ')
+
+        # Store the key press data in member variables
+        self.last_key_timestamp = key_press[1]
+        self.key_name = key_press[2]
+
+        dt1 = datetime.strptime(self.head_info2, '%d.%m.%y-%Hh%Mm%Ss%fns')
+        dt2 = datetime.strptime(self.last_key_timestamp, '%d.%m.%y-%Hh%Mm%Ss%fns')
+
+        # @TODO only do this when the key is pressed participants should press
+        # Replace the True with self.key_name == participants_key
+        self.dt_comand_key = (dt2 - dt1).total_seconds()
+        if self.key_name == self.participant_key:
+            self.reaction_times.append(self.dt_comand_key)
 
     def updateCoordinates(self,x,y,z):
         """Function that simply updates Parameters"""
         self.x = x
         self.y = y
         self.z = z
+        self.resting = False
 
     def onCallLook(self):
         """Lets NAO look to a certain Position"""
@@ -187,8 +240,8 @@ class CommandExecuterModule(ALModule):
 
                 self.tracker.lookAt([self.x, self.y, self.z], self.frame, self.maxSpeed, self.useWholeBody)
                 now = datetime.now()
-                head_info2 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
-                head_logger =  "HeadTurn,{},{}".format(str(head_info1), str(head_info2))
+                self.head_info2 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+                head_logger =  "HeadTurn,{},{}".format(str(head_info1), str(self.head_info2))
                 self.pub_logger.publish(head_logger)
 
     def flash_eyes(self, color=None):
@@ -230,6 +283,13 @@ class NaoPosnerExperiment():
         self.trial_ready_color = "blue"
         self.trial_number = 1
         self.block_type = "N/A"
+        self.corr_trials = 0
+        self.num_trials = 0
+
+        # Reading variables from the config file wrt. Timing
+        global config # To use the gloabl config parser
+        # Tiem it takes for NAO to turn its head to make the complete 1000 ms ITTI
+        self.timing_for_head_turn = int(config['Timing']['NaoHeadTurn'])
 
     # Play block:
     ## Alternative method to Main:
@@ -259,7 +319,9 @@ class NaoPosnerExperiment():
         self.participant_interface("Block")
 
         for t in (list_block):
-            self.nao_rest()
+            # get NAO to start in resting position
+            if not self.CommandExecuter.resting:
+                self.nao_rest()
             start_time = self.get_formatted_datetime()
             self.participant_interface("Trial")
             # # At the beginning of the loop start the thread
@@ -288,13 +350,18 @@ class NaoPosnerExperiment():
             self.nao_move(t)
 
             # Wait some time, go to rest pose, wait again:
-            time.sleep(0.5)
+            self.CommandExecuter.wait_for_keypress_or_2s()
             self.nao_rest()
-            time.sleep(1)
+            time.sleep(1-self.timing_for_head_turn)
 
             end_time = self.get_formatted_datetime()
             #print(t, start_time, end_time, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, block_types[block_num-1], self.PID, self.AGE)
-            information_to_publish = [self.PID, self.AGE, start_time, end_time, self.block_type, self.get_trial_type(t[1], t[0], t[2]), self.trial_number]
+            valid_trial = self.CommandExecuter.valid_trial
+            if valid_trial:
+                self.corr_trials += 1
+            # Information to be published:
+            # Participants ID (PID), Participants Age (AGE), Start and end time of trial, block type, trial type, trial_number (Consecutive increasing each block), validity(True/False)
+            information_to_publish = [self.PID, self.AGE, start_time, end_time, self.block_type, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, valid_trial]
             log_string = str(t[0])+","+str(t[1])+","+str(t[2])+","
             for info in information_to_publish:
                 log_string += (str(info)+",")
@@ -303,10 +370,15 @@ class NaoPosnerExperiment():
 
             self.trial_number += 1
             counter = counter + 1
+            self.num_trials += 1
 
-        self.nao_rest()
+        if not self.CommandExecuter.resting:
+            self.nao_rest()
         time.sleep(0.5)
         print("LAST BLOCK COMPELTE total number of trials for this participant: {}".format(len(list_block)))
+        reaction_times = np.array([self.CommandExecuter.reaction_times])
+        print(f"Mean reaction times: {np.round(np.mean(reaction_times), 2)}")
+        print(f"{np.round((self.corr_trials/self.num_trials), 4)*100}% of Trials were valid")
         self.CommandExecuter.alive = False
 
     # Generate all blocks
@@ -346,6 +418,7 @@ class NaoPosnerExperiment():
             # self.CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, self.CommandExecuter.maxSpeed, False)
             self.CommandExecuter.updateCoordinates(rest_position["x"], rest_position["y"], rest_position["z"])
             self.CommandExecuter.pub_stimulus.publish(" , ")
+            self.CommandExecuter.resting = True
 
     # Nao Move
     ## Send to the correct position, and send sequence to display to psychopy
@@ -435,13 +508,33 @@ class NaoPosnerExperiment():
         self.AGE = raw_input("Experimenter: Enter the participants age(AGE)")
 
 if __name__ == '__main__':
+    # # Start a ROS node that will run in parallel to the main loop
+    # rospy.init_node('my_node')
+
     #main()
     e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
     e.create_new_aprticipant()
     e.nao_rest()
     time.sleep(2)
+
+    # # Create a new parallel thread for the ROS subscription
+    # def ros_thread():
+    #     rospy.Subscriber('keypress', String, e.key_callback)
+    #     rospy.spin()
+
+    # thread = threading.Thread(target=ros_thread)
+    # thread.start()
+
+    # Run the main loop with the blocks and trials
     try:
         e.play_block(True, 2)
     except Exception as e:
         e.CommandExecuter.alive = False
     e.nao_rest()
+
+    # # Wait until ending the programm, before the ROS thread finished
+    # thread.join()
+
+    # # Clean up
+    # e.nao_rest()
+    # rospy.signal_shutdown('Done')
