@@ -441,7 +441,7 @@ if __name__ == '__main__':
     e.nao_rest()
     time.sleep(2)
     try:
-        e.play_block(True, 2)
+        e.play_block(True, 4)
     except Exception as e:
         e.CommandExecuter.alive = False
     e.nao_rest()

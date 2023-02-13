@@ -28,7 +28,7 @@ class StimuliController:
         self.left_stimulus = ' '
         self.right_stimulus = ' '
 
-        self.key_list = ['right', 'left']
+        self.key_list = ['a', 'e']
 
         self.results_flag = False
 
@@ -170,15 +170,15 @@ class StimuliController:
                 if right == "t" or right == "v":
                     right_img = "letter-" + str(right) + "-512.jpg"
                     print("right img:: ", right_img)
-                    msg0_msg = visual.ImageStim(self.win0, right_img) # set image
+                    msg1_msg = visual.ImageStim(self.win1, right_img) # set image
                 elif right == "correct_t" or right == "correct_v":
                     right_img = "letter-" + str(right) + "-512.jpg"
                     print("right img:: ", right_img)
-                    msg0_msg = visual.ImageStim(self.win0, right_img) # set image
+                    msg1_msg = visual.ImageStim(self.win1, right_img) # set image
                 elif right == "incorrect_t" or right == "incorrect_v":
                     right_img = "letter-" + str(right) + "-512.jpg"
                     print("right img:: ", right_img)
-                    msg0_msg = visual.ImageStim(self.win0, right_img) # set image          
+                    msg1_msg = visual.ImageStim(self.win1, right_img) # set image          
 
         # Draw and flip:
         msg0_msg.draw()
@@ -201,7 +201,10 @@ class StimuliController:
             for key in keys:
                 now = datetime.now()
                 key_info = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
-                key_logger =  "KeyPress,{},{}".format(str(key.name), str(key_info))
+
+                kn = key.name
+                kn = 't' if kn == 'a' else 'v'
+                key_logger =  "KeyPress,{},{},{}".format(str(key.name), str(kn), str(key_info))
                 self.pub_keypress.publish(key_logger)
 
 
