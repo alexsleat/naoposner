@@ -92,8 +92,8 @@ delay = 0.3
 
 # Coordinates [In Torso Frame] for the left-, right screen and the rest position
 # Finetune with the real setup using choreograph and then adjust here
-left_screen = {"x":1, "y":1, "z":0}
-right_screen = {"x":1, "y":-1, "z":0}
+left_screen = {"x":1.5, "y":1, "z":0}
+right_screen = {"x":1.5, "y":-1, "z":0}
 rest_position = {"x":1, "y":0, "z":0.1}
 
 # Controlls for how long the system waits until the image is closed

@@ -28,7 +28,7 @@ class StimuliController:
         self.left_stimulus = ' '
         self.right_stimulus = ' '
 
-        self.key_list = ['right', 'left']
+        self.key_list = ['a', 'e']
 
         # ROS setup:
         rospy.init_node('psycopy', anonymous=True)
@@ -126,7 +126,15 @@ class StimuliController:
             for key in keys:
                 now = datetime.now()
                 key_info = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
-                key_logger =  "KeyPress,{},{}".format(str(key.name), str(key_info))
+
+                if(key.name  == 'a'):
+                    key_name = 't'
+                if(key.name  == 'e'):
+                    key_name = 'v'  
+
+                key_logger =  "KeyPress,{},{}".format(str(key_name), str(key_info))
+
+ 
                 self.pub_keypress.publish(key_logger)
 
 
