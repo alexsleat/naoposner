@@ -30,9 +30,13 @@ class StimuliController:
 
         self.key_list = ['a', 'e']
 
+        self.results_flag = False
+
         # ROS setup:
         rospy.init_node('psycopy', anonymous=True)
         rospy.Subscriber("stimulus", String, self.stimulusCb)
+        rospy.Subscriber("results", String, self.resultsCb)
+
         self.pub_keypress = rospy.Publisher('keypress', String, queue_size=0)
 
         #self.preScreen()
@@ -54,6 +58,19 @@ class StimuliController:
         except Exception as e:
             print(e)
 
+    ## Callback when a results is sent from nao_cueing.py
+    def resultsCb(self, data):
+        rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
+
+        try:
+            s = data.data.split(",")
+            self.left_stimulus = s[0]
+            self.right_stimulus = s[1]
+            self.results_flag = True
+            #self.kb.clock.reset()  # when you want to start the timer from
+        except Exception as e:
+            print(e)
+
     ## Callback when a stimulus is sent from nao_cueing.py
     def stimulusCb(self, data):
         rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)
@@ -66,6 +83,7 @@ class StimuliController:
                 self.left_stimulus = s[0]
                 self.right_stimulus = s[1]
                 self.kb.clock.reset()  # when you want to start the timer from
+                self.results_flag = False
             except Exception as e:
                 print(e)
 
@@ -75,9 +93,45 @@ class StimuliController:
         rate = rospy.Rate(120) # 120hz #run at double regular monitors refresh rate
         while not rospy.is_shutdown():
 
-            self.displayCondition(self.left_stimulus, self.right_stimulus, self.config['Screen']['TextOrImg'])
+            if self.results_flag :
+                self.displayResults(self.left_stimulus, self.right_stimulus)
+            else:
+                self.displayCondition(self.left_stimulus, self.right_stimulus, self.config['Screen']['TextOrImg'])
             self.checkForKey(self.key_list)
             rate.sleep()
+
+    ## Display a single condition:
+    def displayResults(self, left, right):
+
+        if left and right != " ":
+            print("Display Results : ", left, right)
+
+        # Draw a white rect for the background
+        msg0_bg = visual.rect.Rect(self.win0, size=(800,600), fillColor='white')
+        msg1_bg = visual.rect.Rect(self.win1, size=(800,600), fillColor='white')
+        msg0_bg.draw()
+        msg1_bg.draw()
+
+        # Draw the text response, this will be overwritten if the img option is set:
+        msg0_msg = visual.TextStim(self.win0, text=left)
+        msg1_msg = visual.TextStim(self.win1, text=right)    
+
+        # An almost-black text
+        msg0_msg.colorSpace = 'rgb255'
+        msg1_msg.colorSpace = 'rgb255'
+
+        # Make it light green again
+        msg0_msg.color = (0, 0, 0)  
+        msg1_msg.color = (0, 0, 0)   
+
+        msg0_msg.pos = (0, -0.7)
+        msg1_msg.pos = (0, -0.7)
+
+        # Draw and flip:
+        msg0_msg.draw()
+        msg1_msg.draw()
+        self.win0.flip()
+        self.win1.flip()   
 
     ## Display a single condition:
     def displayCondition(self, left, right, text_or_img="img"):
@@ -98,12 +152,33 @@ class StimuliController:
         # If the img option is set, load the images based on the stimulus provided:
         if text_or_img == "img":
             if left != ' ': 
-                left_img = "letter-" + str(left) + "-512.jpg"
-                print("left img:: ", left_img)
-                msg0_msg = visual.ImageStim(self.win0, left_img) # set image
+
+                if left == "t" or left == "v":
+                    left_img = "letter-" + str(left) + "-512.jpg"
+                    print("left img:: ", left_img)
+                    msg0_msg = visual.ImageStim(self.win0, left_img) # set image
+                elif left == "correct_t" or left == "correct_v":
+                    left_img = "letter-" + str(left) + "-512.jpg"
+                    print("left img:: ", left_img)
+                    msg0_msg = visual.ImageStim(self.win0, left_img) # set image
+                elif left == "incorrect_t" or left == "incorrect_v":
+                    left_img = "letter-" + str(left) + "-512.jpg"
+                    print("left img:: ", left_img)
+                    msg0_msg = visual.ImageStim(self.win0, left_img) # set image                
+
             if right != ' ': 
-                right_img = "letter-" + str(right) + "-512.jpg"
-                msg1_msg = visual.ImageStim(self.win1, right_img) # set image            
+                if right == "t" or right == "v":
+                    right_img = "letter-" + str(right) + "-512.jpg"
+                    print("right img:: ", right_img)
+                    msg1_msg = visual.ImageStim(self.win1, right_img) # set image
+                elif right == "correct_t" or right == "correct_v":
+                    right_img = "letter-" + str(right) + "-512.jpg"
+                    print("right img:: ", right_img)
+                    msg1_msg = visual.ImageStim(self.win1, right_img) # set image
+                elif right == "incorrect_t" or right == "incorrect_v":
+                    right_img = "letter-" + str(right) + "-512.jpg"
+                    print("right img:: ", right_img)
+                    msg1_msg = visual.ImageStim(self.win1, right_img) # set image          
 
         # Draw and flip:
         msg0_msg.draw()
@@ -127,14 +202,9 @@ class StimuliController:
                 now = datetime.now()
                 key_info = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
 
-                if(key.name  == 'a'):
-                    key_name = 't'
-                if(key.name  == 'e'):
-                    key_name = 'v'  
-
-                key_logger =  "KeyPress,{},{}".format(str(key_name), str(key_info))
-
- 
+                kn = key.name
+                kn = 't' if kn == 'a' else 'v'
+                key_logger =  "KeyPress,{},{},{}".format(str(key.name), str(kn), str(key_info))
                 self.pub_keypress.publish(key_logger)
 
 
