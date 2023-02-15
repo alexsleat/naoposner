@@ -37,7 +37,7 @@ class StimuliController:
         rospy.Subscriber("stimulus", String, self.stimulusCb)
         rospy.Subscriber("results", String, self.resultsCb)
 
-        self.pub_keypress = rospy.Publisher('keypress', String, queue_size=0)
+        self.pub_keypress = rospy.Publisher('keypress', String, queue_size=1)
 
         #self.preScreen()
         # Set the start time of the experiment

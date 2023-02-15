@@ -48,9 +48,16 @@ import itertools, random
 # To logg correct timestamps
 from datetime import datetime
 
+import csv
+import os.path
+
+now = datetime.now()
+date_time_str = now.strftime("%d.%m.%y-%Hh%Mm%Ss")
+CSV_FILENAME = "logs/" + date_time_str + '.csv'
+
 PSYCHOPY_FLAG = True
 DEBUG_FLAG = True
-NAO_FLAG = True
+NAO_FLAG = False
 
 if PSYCHOPY_FLAG:
     pass
@@ -154,7 +161,7 @@ class CommandExecuterModule(ALModule):
 
         self.dt_comand_key = 42
         self.last_key_pressed = -1
-        self.last_key_timestamp = -1
+        self.last_key_timestamp = 2
 
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
@@ -184,19 +191,27 @@ class CommandExecuterModule(ALModule):
 
         # Clear the key pressed and timestamp:
         self.last_key_pressed = -1
-        self.last_key_timestamp = -1
+        self.last_key_timestamp = 3
+
+        # response_flag = False
+
+        keypress_start_time = datetime.now()
 
         while(i < (key_total/key_wait)):
 
+            # if self.dt_comand_key < 2 and response_flag:
             if self.dt_comand_key < 2:
                 self.valid_trial = True
                 self.reaction_times.append(self.dt_comand_key)
+                response_flag = True
                 self.dt_comand_key = 42
-                return None
+                return i
             else:
                 time.sleep(key_wait)
                 i += 1
 
+        keypress_end_time = datetime.now()
+        elapsed_time = (keypress_start_time-keypress_end_time).microseconds
         self.valid_trial = False
         self.reaction_times.append(key_total)
         return None
@@ -263,6 +278,10 @@ class CommandExecuterModule(ALModule):
                 head_logger =  "HeadTurn,{},{}".format(str(head_info1), str(self.head_info2))
                 self.pub_logger.publish(head_logger)
 
+                # Also log to CSV file:
+                with open(CSV_FILENAME, 'a') as f:
+                    f.write(head_logger + "\n")
+
     def flash_eyes(self, color=None):
 
         sGroup = "FaceLeds"
@@ -283,20 +302,29 @@ class CommandExecuterModule(ALModule):
         self.leds.wait(id, 0)
         self.ids.remove(id)
 
+    def set_eyes(self, state=True):
+
+        sGroup = "FaceLeds"
+        if state:
+            self.led_controller.on(sGroup)
+        else:
+            self.led_controller.off(sGroup)
 
 # Main Function for NaoPosner Experiment
 class NaoPosnerExperiment():
 
     def __init__(self, naoip, naoport):
 
-        # Name must match variable name
-        self.myBroker = ALBroker("myBroker",
-        "0.0.0.0",
-        0,
-        naoip,
-        naoport)
+        if NAO_FLAG:
 
-        self.CommandExecuter = CommandExecuterModule("CommandExecuter")
+            # Name must match variable name
+            self.myBroker = ALBroker("myBroker",
+            "0.0.0.0",
+            0,
+            naoip,
+            naoport)
+
+            self.CommandExecuter = CommandExecuterModule("CommandExecuter")
 
         self.block_ready_color = "green"
         self.trial_ready_color = "blue"
@@ -312,7 +340,7 @@ class NaoPosnerExperiment():
 
     # Play block:
     ## Alternative method to Main:
-    def play_block(self, warmup = True, num_blocks = 5):
+    def play_block(self, warmup = True, num_blocks = 5, block_size = 8):
 
 
         # # At the beginning of the loop start the thread
@@ -326,8 +354,8 @@ class NaoPosnerExperiment():
         self.CommandExecuter.dt_comand_key = 42
         t1.start()
         time.sleep(offset + duration + delay)
-
         self.CommandExecuter.pub_stimulus.publish(" , ")
+
         time.sleep(1)
 
         # Generate & randomize the full block:
@@ -335,8 +363,8 @@ class NaoPosnerExperiment():
 
         # Run through a full trial:
         counter = 0
-        block_num = 1
         correct_counter = 0
+        block_num = 1
 
         self.participant_interface("Block")
 
@@ -346,16 +374,20 @@ class NaoPosnerExperiment():
             letter_displayed_in_trial = t[1]
             letter_displayed_in_trial = 't' if letter_displayed_in_trial == 'T' else 'v'
             user_pressed = str_to_display = ''
+            self.CommandExecuter.last_key_pressed = -1
+
+            self.CommandExecuter.set_eyes(True)
 
             # Record the start time of the trail:
             start_time = self.get_formatted_datetime()
             self.participant_interface("Trial")
 
             # Counter to keep track of trial, blocks etc and sort out the warmup trials
-            if(warmup and counter == 10) or (counter == 8 and not warmup):
+            if(warmup and counter == (block_size + 2)) or (counter == block_size and not warmup):
                 print("BLOCK " + str(block_num) + " Complete")
 
                 counter = 0
+                correct_counter = 0
                 block_num = block_num + 1
                 warmup = False
 
@@ -365,15 +397,25 @@ class NaoPosnerExperiment():
 
             # Perform the movements based on the current trial:
             self.nao_move(t)
+            self.CommandExecuter.set_eyes(False)
 
             # Wait some time, go to rest pose, wait again:
-            self.CommandExecuter.wait_for_keypress_or_2s()
+            print("Sleep 6")
+            sleep_time = self.CommandExecuter.wait_for_keypress_or_2s()
+
+            self.CommandExecuter.pub_stimulus.publish(" , ")
+
+            print(sleep_time)
+            if(sleep_time != None):
+                time_remaining = (key_total / key_wait) - sleep_time
+                print("Time remaining, ", time_remaining)
+                for i in range(int(time_remaining)):
+                    time.sleep(key_wait)
 
             ## In the warmup round, show the in red or green when they press the key to show they're correct:
                 # But we always want to calculate the correct counter for after block display
             # Get the key the user pressed:
             user_pressed = self.CommandExecuter.last_key_pressed 
-
             # Generate the response msg for the letter displayed on the screen
             if letter_displayed_in_trial == user_pressed:
                 correct_counter = correct_counter + 1
@@ -391,9 +433,11 @@ class NaoPosnerExperiment():
                 self.CommandExecuter.pub_stimulus.publish(str_to_display)
 
 
-            time.sleep(1-self.timing_for_head_turn)
+            print("Sleep 1")
+            #time.sleep(1)
             self.nao_rest()
-            time.sleep(0.01) ## Using this to stop stimuli clear coming before results msg
+            print("Sleep 2")
+            time.sleep(self.timing_for_head_turn)
 
             ###########################
             #### Log the details:
@@ -403,24 +447,38 @@ class NaoPosnerExperiment():
             if valid_trial:
                 self.corr_trials += 1
             # Information to be published:
-            # Participants ID (PID), Participants Age (AGE), Start and end time of trial, block type, trial type, trial_number (Consecutive increasing each block), validity(True/False), user pressed key, user pressed key timestamp
-            information_to_publish = [self.PID, self.AGE, start_time, end_time, self.block_type, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, valid_trial, self.CommandExecuter.last_key_pressed, self.CommandExecuter.last_key_timestamp]
+            # Participants ID (PID), Participants Age (AGE), Start and end time of trial, block type, trial type, trial_number (Consecutive increasing each block), validity(True/False), letter_displayed_in_trial, user pressed key, user pressed key timestamp
+            information_to_publish = [self.PID, self.AGE, start_time, end_time, self.block_type, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, valid_trial, letter_displayed_in_trial, self.CommandExecuter.last_key_pressed, self.CommandExecuter.last_key_timestamp]
             log_string = str(t[0])+","+str(t[1])+","+str(t[2])+","
             for info in information_to_publish:
                 log_string += (str(info)+",")
-            #print(log_string)
+            #print(log_string)logger
             self.CommandExecuter.pub_logger.publish(log_string)
+
+            # Also log to CSV file:
+            with open(CSV_FILENAME, 'a') as f:
+                f.write(log_string + "\n")
 
             self.trial_number += 1
             counter = counter + 1
             self.num_trials += 1
 
             # During a warmup block, show the results of each trial after for ResultTimer seconds.
+            reaction_times = -1
             if(warmup):
                 
                 reaction_times = self.CommandExecuter.reaction_times[counter-1]
-                self.CommandExecuter.pub_result.publish("{}ms,{}/{}".format(str(np.round(reaction_times, 2)), str(correct_counter), str(counter)))
+                self.CommandExecuter.pub_result.publish("Response Time: {},{}/{} Correct".format(str(np.round(reaction_times, 2)), str(correct_counter), str(counter)))
+                print("Sleep 3")
                 time.sleep(int(config['Timing']['ResultTimer']))
+
+            if (counter == block_size and not warmup) or (counter == (block_size + 2) and warmup):
+                # Print results to screen:
+                reaction_times = self.CommandExecuter.reaction_times
+                self.CommandExecuter.pub_result.publish("Average Response: {}s,{}/{} Correct".format(str(np.round(np.mean(reaction_times), 2)), str(correct_counter), str(counter)))
+                print("Sleep 4")
+                time.sleep(int(config['Timing']['ResultTimer']))
+                correct_counter = 0
 
         # if not self.CommandExecuter.resting:
         #     self.nao_rest()
@@ -433,9 +491,7 @@ class NaoPosnerExperiment():
         print("{} Perc. of Trials were valid".format(np.round((float(self.corr_trials)/float(self.num_trials)), 4)*100))
         self.CommandExecuter.alive = False
 
-        # Print results to screen:
-        self.CommandExecuter.pub_result.publish("{}ms,{}/{}".format(str(np.round(np.mean(reaction_times), 2)), str(correct_counter), str(counter)))
-
+        print("Sleep 5")
         time.sleep(0.5)
 
     # Generate all blocks
@@ -457,6 +513,31 @@ class NaoPosnerExperiment():
         # Randomize across all blocks:
         random.shuffle(list_block)
         # @TODO ramdomize in a way to not have more than 2(?) trials of the same type in a row.
+
+        repeaters = 1
+        while repeaters  > 0:
+
+            repeaters = 0
+
+            random.shuffle(list_block)
+
+            for i in range(len(list_block) - 2):
+                    cd = list_block[i][0]
+                    fd1 = list_block[i+1][0]
+                    fd2 = list_block[i+2][0]
+
+                    cl = list_block[i][1]
+                    fl1 = list_block[i+1][1]
+                    fl2 = list_block[i+2][1]
+
+                    if (cd == fd1) and (cd == fd2) and (cl == fl1) and (cl == fl2):
+                        print(cd, fd1, fd2)
+                        repeaters = repeaters + 1
+                    else:
+                        pass
+
+            print("Origi: ", list_block)
+            print("Repeaters: ", repeaters)
 
         # Add the two trials at the start of the sequence for the warmup
         if warmup:
@@ -573,31 +654,17 @@ if __name__ == '__main__':
         try: 
             #main()
             e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
-            e.create_new_aprticipant()
-            e.nao_rest()
-            time.sleep(2)
-
-            # # Create a new parallel thread for the ROS subscription
-            # def ros_thread():
-            #     rospy.Subscriber('keypress', String, e.key_callback)
-            #     rospy.spin()
-
-            # thread = threading.Thread(target=ros_thread)
-            # thread.start()
-
-            # Run the main loop with the blocks and trials
-            e.play_block(True, 2)
-
-            # try:
-            #     e.play_block(True, 2)
-            # except Exception as expt:
-            #     print(expt)
-            #     e.CommandExecuter.alive = False
+            # e.create_new_aprticipant()
             # e.nao_rest()
+            # time.sleep(2)
 
-            # # Wait until ending the programm, before the ROS thread finished
-            # thread.join()
+            # # Run the main loop with the blocks and trials
+            # # e.play_block(True, 2)
+            # e.play_block(False, 1)
 
+            e.generate_all_block(False, 3)
+            sys.exit(0)
+            
         except Exception as expt:
             print(expt)
             e.myBroker.shutdown()
