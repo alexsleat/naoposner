@@ -124,8 +124,8 @@ class StimuliController:
         msg0_msg.color = (0, 0, 0)  
         msg1_msg.color = (0, 0, 0)   
 
-        msg0_msg.pos = (0, -0.7)
-        msg1_msg.pos = (0, -0.7)
+        msg0_msg.pos = (0, 0)
+        msg1_msg.pos = (0, 0)
 
         # Draw and flip:
         msg0_msg.draw()
