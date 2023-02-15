@@ -151,10 +151,13 @@ class CommandExecuterModule(ALModule):
         time.sleep(3)
 
         self.dt_comand_key = 42
+        self.last_key_pressed = -1
+        self.last_key_timestamp = -1
 
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
         self.pub_logger = rospy.Publisher('logger', String, queue_size=0)
+        self.pub_results = rospy.Publisher('results', String, queue_size=0)
 
         self.sub_keypress = rospy.Subscriber('keypress', String, self.keypressCb)
         rospy.init_node('nao_cueing', anonymous=True)
@@ -177,6 +180,9 @@ class CommandExecuterModule(ALModule):
         # Loop is idle for 2s waiting for participants to press key
         # @Alex maybe we should run this in a thread as well ?
 
+        # Clear the key pressed and timestamp:
+        self.last_key_pressed = -1
+        self.last_key_timestamp = -1
         while(i<100):
 
             if self.dt_comand_key < 2:
@@ -198,16 +204,16 @@ class CommandExecuterModule(ALModule):
         key_press = data.data.split(',')
 
         # Store the key press data in member variables
-        self.last_key_timestamp = key_press[2]
-        self.key_name = key_press[1]
+        self.last_key_timestamp = key_press[3]
+        self.last_key_pressed = key_press[2]
 
         dt1 = datetime.strptime(self.head_info2, '%d.%m.%y-%Hh%Mm%Ss%fns')
         dt2 = datetime.strptime(self.last_key_timestamp, '%d.%m.%y-%Hh%Mm%Ss%fns')
 
         # @TODO only do this when the key is pressed participants should press
-        # Replace the True with self.key_name == participants_key
+        # Replace the True with self.last_key_pressed == participants_key
         self.dt_comand_key = (dt2 - dt1).total_seconds()
-        # if self.key_name in self.participant_key:
+        # if self.last_key_pressed in self.participant_key:
         #     self.reaction_times.append(self.dt_comand_key)
         self.reaction_times.append(self.dt_comand_key)
 
@@ -369,7 +375,7 @@ class NaoPosnerExperiment():
                 self.corr_trials += 1
             # Information to be published:
             # Participants ID (PID), Participants Age (AGE), Start and end time of trial, block type, trial type, trial_number (Consecutive increasing each block), validity(True/False)
-            information_to_publish = [self.PID, self.AGE, start_time, end_time, self.block_type, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, valid_trial]
+            information_to_publish = [self.PID, self.AGE, start_time, end_time, self.block_type, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, valid_trial, self.last_key_pressed, self.last_key_timestamp]
             log_string = str(t[0])+","+str(t[1])+","+str(t[2])+","
             for info in information_to_publish:
                 log_string += (str(info)+",")
@@ -379,6 +385,13 @@ class NaoPosnerExperiment():
             self.trial_number += 1
             counter = counter + 1
             self.num_trials += 1
+
+            if(warmup):
+
+                current_trial_id = len(self.CommandExecuter.reaction_times) - 1
+                reaction_times = self.CommandExecuter.reaction_times[current_trial_id]
+                self.CommandExecuter.pub_result.publish("{}ms, ".format(str(reaction_times)))
+                time.sleep(int(config['Timing']['ResultDisplayTime']))
 
         # if not self.CommandExecuter.resting:
         #     self.nao_rest()
