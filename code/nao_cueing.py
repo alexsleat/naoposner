@@ -57,7 +57,7 @@ CSV_FILENAME = "logs/" + date_time_str + '.csv'
 
 PSYCHOPY_FLAG = True
 DEBUG_FLAG = True
-NAO_FLAG = False
+NAO_FLAG = True
 
 if PSYCHOPY_FLAG:
     pass
@@ -217,9 +217,7 @@ class CommandExecuterModule(ALModule):
         return None
 
     def keypressCb(self, data):
-        print(data.data)
-        # @TODO add logging here for key presss
-
+        print("KeyPressed: ", data.data)
         # Parse the message string
         key_press = data.data.split(',')
 
@@ -230,12 +228,8 @@ class CommandExecuterModule(ALModule):
         dt1 = datetime.strptime(self.head_info2, '%d.%m.%y-%Hh%Mm%Ss%fns')
         dt2 = datetime.strptime(self.last_key_timestamp, '%d.%m.%y-%Hh%Mm%Ss%fns')
 
-        # @TODO only do this when the key is pressed participants should press
-        # Replace the True with self.last_key_pressed == participants_key
+        # Store time of key press
         self.dt_comand_key = (dt2 - dt1).total_seconds()
-        # if self.last_key_pressed in self.participant_key:
-        #     self.reaction_times.append(self.dt_comand_key)
-        #self.reaction_times.append(self.dt_comand_key)
 
     def updateCoordinates(self,x,y,z):
         """Function that simply updates Parameters"""
@@ -340,7 +334,7 @@ class NaoPosnerExperiment():
 
     # Play block:
     ## Alternative method to Main:
-    def play_block(self, warmup = True, num_blocks = 5, block_size = 8):
+    def play_block(self, warmup = True, num_trials = 5, block_size = 8):
 
 
         # # At the beginning of the loop start the thread
@@ -359,7 +353,7 @@ class NaoPosnerExperiment():
         time.sleep(1)
 
         # Generate & randomize the full block:
-        list_block, block_types = self.generate_all_block(warmup, num_blocks)
+        list_block, block_types = self.generate_all_block(warmup, num_trials/block_size)
 
         # Run through a full trial:
         counter = 0
@@ -403,7 +397,8 @@ class NaoPosnerExperiment():
             print("Sleep 6")
             sleep_time = self.CommandExecuter.wait_for_keypress_or_2s()
 
-            self.CommandExecuter.pub_stimulus.publish(" , ")
+            if not warmup:
+                self.CommandExecuter.pub_stimulus.publish(" , ")
 
             print(sleep_time)
             if(sleep_time != None):
@@ -498,6 +493,8 @@ class NaoPosnerExperiment():
     ### Geneate a set of all 8 combinations (2x2x2), multiply by the total number of blocks in the trial, and add 2 for warmup to the first block
     def generate_all_block(self, warmup=True, num_blocks=1):
 
+        print("Generating Blocks ", num_blocks)
+
         # Generate full block:
         BD = [["L", "R"],["T", "V"] ,["C", "I"]]
         block = itertools.product(BD[0], BD[1], BD[2])
@@ -531,13 +528,13 @@ class NaoPosnerExperiment():
                     fl2 = list_block[i+2][1]
 
                     if (cd == fd1) and (cd == fd2) and (cl == fl1) and (cl == fl2):
-                        print(cd, fd1, fd2)
+                        #print(cd, fd1, fd2)
                         repeaters = repeaters + 1
                     else:
                         pass
 
-            print("Origi: ", list_block)
-            print("Repeaters: ", repeaters)
+        print("Origi: ", list_block)
+        print("Repeaters: ", repeaters)
 
         # Add the two trials at the start of the sequence for the warmup
         if warmup:
@@ -547,6 +544,8 @@ class NaoPosnerExperiment():
         # Create list of possible block types
         block_type = "N/A"
         block_types= num_blocks*[block_type]
+
+        print("Total number of trials; ", len(list_block))
 
         return list_block, block_types
 
@@ -594,7 +593,7 @@ class NaoPosnerExperiment():
     def participant_interface(self, ready_for = None):
 
         if ready_for == "Block":
-            user_input = raw_input("Press 'o' for occluded block, b for baseline:\t")
+            user_input = raw_input("Press 'o' for occluded block, b for baseline : ")
 
             if (user_input == 'b') or (user_input == 'o'):
                 self.block_type = user_input
@@ -642,8 +641,11 @@ class NaoPosnerExperiment():
         return trial_type_map[key]
 
     def create_new_aprticipant(self):
-        self.PID = raw_input("Experimenter: Enter the participants ID (PID)")
-        self.AGE = raw_input("Experimenter: Enter the participants age(AGE)")
+        print("#############################")
+        print("#############################")
+        print("")
+        self.PID = raw_input("Experimenter: Enter the participants ID (PID) : ")
+        self.AGE = raw_input("Experimenter: Enter the participants age(AGE) : ")
 
 if __name__ == '__main__':
     # # Start a ROS node that will run in parallel to the main loop
@@ -654,16 +656,18 @@ if __name__ == '__main__':
         try: 
             #main()
             e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
-            # e.create_new_aprticipant()
-            # e.nao_rest()
-            # time.sleep(2)
+            e.create_new_aprticipant()
+            e.nao_rest()
 
             # # Run the main loop with the blocks and trials
-            # # e.play_block(True, 2)
-            # e.play_block(False, 1)
+            number_of_trials = int(config['Experiment']['TotalNumberOfTrials'])
+            size_of_block = int(config['Experiment']['BlockSize'])
+            warmup_block = bool(config['Experiment']['WarmUpBlock'])
 
-            e.generate_all_block(False, 3)
-            sys.exit(0)
+            e.play_block(warmup_block, number_of_trials, size_of_block)
+
+            # e.generate_all_block(False, 3)
+            # sys.exit(0)
             
         except Exception as expt:
             print(expt)
