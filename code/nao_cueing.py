@@ -334,7 +334,7 @@ class NaoPosnerExperiment():
 
     # Play block:
     ## Alternative method to Main:
-    def play_block(self, warmup = True, num_trials = 5, block_size = 8):
+    def play_block(self, warmup = True, num_trials = 8, block_size = 8, trials_before_feedback=8, training=False):
 
 
         # # At the beginning of the loop start the thread
@@ -377,7 +377,7 @@ class NaoPosnerExperiment():
             self.participant_interface("Trial")
 
             # Counter to keep track of trial, blocks etc and sort out the warmup trials
-            if(warmup and counter == (block_size + 2)) or (counter == block_size and not warmup):
+            if(warmup and counter == (trials_before_feedback + 2)) or (counter == trials_before_feedback and not warmup):
                 print("BLOCK " + str(block_num) + " Complete")
 
                 counter = 0
@@ -397,7 +397,29 @@ class NaoPosnerExperiment():
             print("Sleep 6")
             sleep_time = self.CommandExecuter.wait_for_keypress_or_2s()
 
-            if not warmup:
+
+            ## In the training round, show the in red or green when they press the key to show they're correct:
+                # But we always want to calculate the correct counter for after block display
+            # Get the key the user pressed:
+            user_pressed = self.CommandExecuter.last_key_pressed 
+
+            if(training):
+
+                # Generate the response msg for the letter displayed on the screen
+                if letter_displayed_in_trial == user_pressed:
+                    correct_counter = correct_counter + 1
+                    str_to_display = "correct_"  
+                else:
+                    str_to_display = "incorrect_"
+                str_to_display = str_to_display + letter_displayed_in_trial
+
+                # Display it on the correct side:
+                if(t[0] == "L"):
+                    str_to_display = str_to_display + ", "
+                else:
+                    str_to_display = " ," + str_to_display
+                self.CommandExecuter.pub_stimulus.publish(str_to_display)
+            else:
                 self.CommandExecuter.pub_stimulus.publish(" , ")
 
             print(sleep_time)
@@ -406,27 +428,6 @@ class NaoPosnerExperiment():
                 print("Time remaining, ", time_remaining)
                 for i in range(int(time_remaining)):
                     time.sleep(key_wait)
-
-            ## In the warmup round, show the in red or green when they press the key to show they're correct:
-                # But we always want to calculate the correct counter for after block display
-            # Get the key the user pressed:
-            user_pressed = self.CommandExecuter.last_key_pressed 
-            # Generate the response msg for the letter displayed on the screen
-            if letter_displayed_in_trial == user_pressed:
-                correct_counter = correct_counter + 1
-                str_to_display = "correct_"  
-            else:
-                str_to_display = "incorrect_"
-            str_to_display = str_to_display + letter_displayed_in_trial
-
-            if(warmup):
-                # Display it on the correct side:
-                if(t[0] == "L"):
-                    str_to_display = str_to_display + ", "
-                else:
-                    str_to_display = " ," + str_to_display
-                self.CommandExecuter.pub_stimulus.publish(str_to_display)
-
 
             print("Sleep 1")
             #time.sleep(1)
@@ -458,17 +459,18 @@ class NaoPosnerExperiment():
             counter = counter + 1
             self.num_trials += 1
 
-            # During a warmup block, show the results of each trial after for ResultTimer seconds.
+            # During a training block, show the results of each trial after for ResultTimer seconds.
             reaction_times = -1
-            if(warmup):
+            if(training):
                 
                 reaction_times = self.CommandExecuter.reaction_times[counter-1]
                 self.CommandExecuter.pub_result.publish("Response Time: {},{}/{} Correct".format(str(np.round(reaction_times, 2)), str(correct_counter), str(counter)))
                 print("Sleep 3")
                 time.sleep(int(config['Timing']['ResultTimer']))
 
-            if (counter == block_size and not warmup) or (counter == (block_size + 2) and warmup):
+            if ((counter == trials_before_feedback) and not warmup) or (counter == (trials_before_feedback + 2) and warmup):
                 # Print results to screen:
+                print("Counter", counter, " trials_before_feedback", trials_before_feedback)
                 reaction_times = self.CommandExecuter.reaction_times
                 self.CommandExecuter.pub_result.publish("Average Response: {}s,{}/{} Correct".format(str(np.round(np.mean(reaction_times), 2)), str(correct_counter), str(counter)))
                 print("Sleep 4")
@@ -501,8 +503,10 @@ class NaoPosnerExperiment():
 
         # Convert to a list, should be a nicer way to do this?
         list_block = []
+        calculated_block_size = 0
         for prod in block:
             list_block.append(tuple(prod))
+            calculated_block_size = calculated_block_size + 1
 
         # Multiply the list by the number specified
         list_block = list_block * num_blocks
@@ -536,10 +540,35 @@ class NaoPosnerExperiment():
         print("Origi: ", list_block)
         print("Repeaters: ", repeaters)
 
-        # Add the two trials at the start of the sequence for the warmup
+
+        ## This adds warm ups to each 8:
+        # blocks_with_warmup = []
+        # block_counter = 0
+        # for b in range(num_blocks):
+
+        #     # # Add the two trials at the start of the sequence for the warmup
+        #     if warmup:
+        #         blocks_with_warmup.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+        #         blocks_with_warmup.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+        #         # blocks_with_warmup.append(('Z', 'Z', 'Z'))
+        #         # blocks_with_warmup.append(('Z', 'Z', 'Z'))
+
+        #     for t in range(calculated_block_size):
+        #         blocks_with_warmup.append(list_block[block_counter])
+        #         block_counter = block_counter + 1
+        # list_block = blocks_with_warmup
+
+
+
+        # # Add the two trials at the start of the sequence for the warmup
         if warmup:
-            list_block.insert(0, (random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
-            list_block.insert(0, (random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+            list_block.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+            list_block.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+            # blocks_with_warmup.append(('Z', 'Z', 'Z'))
+            # blocks_with_warmup.append(('Z', 'Z', 'Z'))
+
+
+        print("Blocks with WARM", list_block, len(list_block))
 
         # Create list of possible block types
         block_type = "N/A"
@@ -552,6 +581,8 @@ class NaoPosnerExperiment():
     # Nao Rest
     ## Send to neutral pose
     def nao_rest(self):
+
+        if NAO_FLAG:
             # self.CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, self.CommandExecuter.maxSpeed, False)
             self.CommandExecuter.updateCoordinates(rest_position["x"], rest_position["y"], rest_position["z"])
             self.CommandExecuter.pub_stimulus.publish(" , ")
@@ -583,9 +614,10 @@ class NaoPosnerExperiment():
             else:
                 str_to_display = " ,v"
 
-        # update coordinates, and publish the stimuli
-        self.CommandExecuter.updateCoordinates(dir_to_look[0], dir_to_look[1], dir_to_look[2] )
-        # self.CommandExecuter.tracker.lookAt([dir_to_look[0], dir_to_look[1], dir_to_look[2]], 0, self.CommandExecuter.maxSpeed, False)
+        if NAO_FLAG:
+            # update coordinates, and publish the stimuli
+            self.CommandExecuter.updateCoordinates(dir_to_look[0], dir_to_look[1], dir_to_look[2] )
+            # self.CommandExecuter.tracker.lookAt([dir_to_look[0], dir_to_look[1], dir_to_look[2]], 0, self.CommandExecuter.maxSpeed, False)
 
         self.CommandExecuter.pub_stimulus.publish(str_to_display)
 
@@ -662,9 +694,15 @@ if __name__ == '__main__':
             # # Run the main loop with the blocks and trials
             number_of_trials = int(config['Experiment']['TotalNumberOfTrials'])
             size_of_block = int(config['Experiment']['BlockSize'])
-            warmup_block = bool(config['Experiment']['WarmUpBlock'])
 
-            e.play_block(warmup_block, number_of_trials, size_of_block)
+            training_block = bool(config['Experiment']['TrainingBlock'])
+            training_size = int(config['Experiment']['TrainingSize'])
+
+            # Training Block
+            if(training_block):
+                e.play_block(training_block, training_size, training_size, training_size, True)
+
+            # e.play_block(True, number_of_trials, 8, size_of_block)            
 
             # e.generate_all_block(False, 3)
             # sys.exit(0)
