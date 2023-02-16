@@ -225,11 +225,12 @@ class CommandExecuterModule(ALModule):
         self.last_key_timestamp = key_press[3]
         self.last_key_pressed = key_press[2]
 
-        dt1 = datetime.strptime(self.head_info2, '%d.%m.%y-%Hh%Mm%Ss%fns')
-        dt2 = datetime.strptime(self.last_key_timestamp, '%d.%m.%y-%Hh%Mm%Ss%fns')
+        if(self.head_info2):
+            dt1 = datetime.strptime(self.head_info2, '%d.%m.%y-%Hh%Mm%Ss%fns')
+            dt2 = datetime.strptime(self.last_key_timestamp, '%d.%m.%y-%Hh%Mm%Ss%fns')
 
-        # Store time of key press
-        self.dt_comand_key = (dt2 - dt1).total_seconds()
+            # Store time of key press
+            self.dt_comand_key = (dt2 - dt1).total_seconds()
 
     def updateCoordinates(self,x,y,z):
         """Function that simply updates Parameters"""
@@ -370,6 +371,8 @@ class NaoPosnerExperiment():
             user_pressed = str_to_display = ''
             self.CommandExecuter.last_key_pressed = -1
 
+            self.CommandExecuter.pub_stimulus.publish(" , ")
+
             self.CommandExecuter.set_eyes(True)
 
             # Record the start time of the trail:
@@ -403,11 +406,14 @@ class NaoPosnerExperiment():
             # Get the key the user pressed:
             user_pressed = self.CommandExecuter.last_key_pressed 
 
+            # Generate the response msg for the letter displayed on the screen
+            if letter_displayed_in_trial == user_pressed:
+                correct_counter = correct_counter + 1
+
             if(training):
 
                 # Generate the response msg for the letter displayed on the screen
                 if letter_displayed_in_trial == user_pressed:
-                    correct_counter = correct_counter + 1
                     str_to_display = "correct_"  
                 else:
                     str_to_display = "incorrect_"
@@ -462,9 +468,16 @@ class NaoPosnerExperiment():
             # During a training block, show the results of each trial after for ResultTimer seconds.
             reaction_times = -1
             if(training):
-                
                 reaction_times = self.CommandExecuter.reaction_times[counter-1]
-                self.CommandExecuter.pub_result.publish("Response Time: {},{}/{} Correct".format(str(np.round(reaction_times, 2)), str(correct_counter), str(counter)))
+
+                ### Display on the same side as letter:
+                if(t[0] == "L"):
+                    self.CommandExecuter.pub_result.publish("Response Time: {}, ".format(str(np.round(reaction_times, 2))))
+                else:
+                    self.CommandExecuter.pub_result.publish(" ,Response Time: {}".format(str(np.round(reaction_times, 2))))
+
+                # Display on btoh:
+                # self.CommandExecuter.pub_result.publish("Response Time: {},{}/{} Correct".format(str(np.round(reaction_times, 2)), str(correct_counter), str(counter)))
                 print("Sleep 3")
                 time.sleep(int(config['Timing']['ResultTimer']))
 
@@ -479,6 +492,7 @@ class NaoPosnerExperiment():
 
         # if not self.CommandExecuter.resting:
         #     self.nao_rest()
+        self.CommandExecuter.pub_stimulus.publish(" , ")
         self.nao_rest()
 
         
@@ -595,6 +609,8 @@ class NaoPosnerExperiment():
         dir_to_look = (right_screen["x"], right_screen["y"], right_screen["z"])
         str_to_display = "N/A"
 
+        print("Nao Move", t)
+
         # Check Left direction and congruency:
         if(t[0] == "L"):
             if(t[2] != "C"):
@@ -619,6 +635,7 @@ class NaoPosnerExperiment():
             self.CommandExecuter.updateCoordinates(dir_to_look[0], dir_to_look[1], dir_to_look[2] )
             # self.CommandExecuter.tracker.lookAt([dir_to_look[0], dir_to_look[1], dir_to_look[2]], 0, self.CommandExecuter.maxSpeed, False)
 
+        time.sleep(stimuli_wait)
         self.CommandExecuter.pub_stimulus.publish(str_to_display)
 
     # Function to wait for user input -> Signalling readiness
@@ -699,10 +716,11 @@ if __name__ == '__main__':
             training_size = int(config['Experiment']['TrainingSize'])
 
             # Training Block
-            if(training_block):
-                e.play_block(training_block, training_size, training_size, training_size, True)
+            # if(training_block):
+            #     e.play_block(training_block, training_size, training_size, training_size, True)
 
-            # e.play_block(True, number_of_trials, 8, size_of_block)            
+            e.play_block(True, number_of_trials, 8, size_of_block)            
+            e.play_block(True, number_of_trials, 8, size_of_block)  
 
             # e.generate_all_block(False, 3)
             # sys.exit(0)
