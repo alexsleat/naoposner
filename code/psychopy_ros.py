@@ -16,6 +16,11 @@ class StimuliController:
         self.config.read('config.ini')
 
         self.img_size = float(self.config['Screen']['ImgSize'])
+        # The Y axis acts weight, because it's of a percentage of the total. So need the below factor applied to the height size:
+        self.height_scalar = 0.25
+
+        self.x_location = 0.5
+        self.y_location = 0.0
 
         # Convert config file string to tuple for the screen res
         self.screen_resolution = tuple(int(v) for v in re.findall("[0-9]+", self.config['Screen']['ScreenResolution']))
@@ -182,8 +187,10 @@ class StimuliController:
                     #print("right img:: ", right_img)
                     msg1_msg = visual.ImageStim(self.win1, right_img) # set image          
 
-        msg0_msg.size = self.img_size
-        msg1_msg.size = self.img_size
+        msg0_msg.size = (self.img_size, self.img_size * self.height_scalar)
+        msg0_msg.pos = ((self.x_location * -1), self.y_location)
+        msg1_msg.size = (self.img_size, self.img_size * self.height_scalar)
+        msg1_msg.pos = (self.x_location , self.y_location)
         # Draw and flip:
         msg0_msg.draw()
         msg1_msg.draw()
