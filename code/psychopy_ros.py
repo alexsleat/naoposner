@@ -103,8 +103,8 @@ class StimuliController:
     ## Display a single condition:
     def displayResults(self, left, right):
 
-        if left and right != " ":
-            print("Display Results : ", left, right)
+        # if left and right != " ":
+        #     print("Display Results : ", left, right)
 
         # Draw a white rect for the background
         msg0_bg = visual.rect.Rect(self.win0, size=(800,600), fillColor='white')
@@ -136,8 +136,8 @@ class StimuliController:
     ## Display a single condition:
     def displayCondition(self, left, right, text_or_img="img"):
 
-        if left and right != " ":
-            print("Display Condition : ", left, right)
+        # if left and right != " ":
+        #     print("Display Condition : ", left, right)
 
         # Draw a white rect for the background
         msg0_bg = visual.rect.Rect(self.win0, size=(800,600), fillColor='white')
@@ -155,29 +155,29 @@ class StimuliController:
 
                 if left == "t" or left == "v":
                     left_img = "letter-" + str(left) + "-512.jpg"
-                    print("left img:: ", left_img)
+                    #print("left img:: ", left_img)
                     msg0_msg = visual.ImageStim(self.win0, left_img) # set image
                 elif left == "correct_t" or left == "correct_v":
                     left_img = "letter-" + str(left) + "-512.jpg"
-                    print("left img:: ", left_img)
+                    #print("left img:: ", left_img)
                     msg0_msg = visual.ImageStim(self.win0, left_img) # set image
                 elif left == "incorrect_t" or left == "incorrect_v":
                     left_img = "letter-" + str(left) + "-512.jpg"
-                    print("left img:: ", left_img)
+                    #print("left img:: ", left_img)
                     msg0_msg = visual.ImageStim(self.win0, left_img) # set image                
 
             if right != ' ': 
                 if right == "t" or right == "v":
                     right_img = "letter-" + str(right) + "-512.jpg"
-                    print("right img:: ", right_img)
+                    #print("right img:: ", right_img)
                     msg1_msg = visual.ImageStim(self.win1, right_img) # set image
                 elif right == "correct_t" or right == "correct_v":
                     right_img = "letter-" + str(right) + "-512.jpg"
-                    print("right img:: ", right_img)
+                    #print("right img:: ", right_img)
                     msg1_msg = visual.ImageStim(self.win1, right_img) # set image
                 elif right == "incorrect_t" or right == "incorrect_v":
                     right_img = "letter-" + str(right) + "-512.jpg"
-                    print("right img:: ", right_img)
+                    #print("right img:: ", right_img)
                     msg1_msg = visual.ImageStim(self.win1, right_img) # set image          
 
         # Draw and flip:

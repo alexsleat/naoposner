@@ -225,7 +225,7 @@ class CommandExecuterModule(ALModule):
         self.last_key_timestamp = key_press[3]
         self.last_key_pressed = key_press[2]
 
-        if(self.head_info2):
+        if(self.head_info2 != ""):
             dt1 = datetime.strptime(self.head_info2, '%d.%m.%y-%Hh%Mm%Ss%fns')
             dt2 = datetime.strptime(self.last_key_timestamp, '%d.%m.%y-%Hh%Mm%Ss%fns')
 
@@ -254,7 +254,7 @@ class CommandExecuterModule(ALModule):
                 self.old_y = self.y
                 self.old_z = self.z
 
-                print("Head turning: {},{},{}".format(str(self.x), str(self.y), str(self.z)))
+                #print("Head turning: {},{},{}".format(str(self.x), str(self.y), str(self.z)))
 
                 self.useWholeBody = False
                 self.frame = 0 #0 - TORSO, 1 - World, 2- Robot
@@ -327,6 +327,13 @@ class NaoPosnerExperiment():
         self.block_type = "N/A"
         self.corr_trials = 0
         self.num_trials = 0
+        self.head_turn_sent_time = ""
+        self.stimulus_sent_time = ""
+
+        headers_string = "PID,Age,Trial_Start,Trial_End,Block_Type,LeftRight,TV,Congruency,Trial_Type,Trial_No,Trial_Valid,Letter_Displayed,User_KeyPress,User_KeyTimeStamp,Onset_HeadMovement,Onset_Stimulus"
+
+        with open(CSV_FILENAME, 'a') as f:
+            f.write(headers_string + "\n")
 
         # Reading variables from the config file wrt. Timing
         global config # To use the gloabl config parser
@@ -339,15 +346,15 @@ class NaoPosnerExperiment():
 
 
         # # At the beginning of the loop start the thread
-        try:
-            # Define a thread parallel to the main one
-            # Thread runs the function that controlls NAOs head
-            t1 = threading.Timer(offset, self.CommandExecuter.onCallLook)
-        except KeyboardInterrupt:
-            print ("Interrupted by us ... Shutdown")
+        # try:
+        #     # Define a thread parallel to the main one
+        #     # Thread runs the function that controlls NAOs head
+        #     t1 = threading.Timer(offset, self.CommandExecuter.onCallLook)
+        # except KeyboardInterrupt:
+        #     print ("Interrupted by us ... Shutdown")
 
         self.CommandExecuter.dt_comand_key = 42
-        t1.start()
+        # t1.start()
         time.sleep(offset + duration + delay)
         self.CommandExecuter.pub_stimulus.publish(" , ")
 
@@ -397,7 +404,7 @@ class NaoPosnerExperiment():
             self.CommandExecuter.set_eyes(False)
 
             # Wait some time, go to rest pose, wait again:
-            print("Sleep 6")
+            #print("Sleep 6")
             sleep_time = self.CommandExecuter.wait_for_keypress_or_2s()
 
 
@@ -428,17 +435,16 @@ class NaoPosnerExperiment():
             else:
                 self.CommandExecuter.pub_stimulus.publish(" , ")
 
-            print(sleep_time)
             if(sleep_time != None):
                 time_remaining = (key_total / key_wait) - sleep_time
-                print("Time remaining, ", time_remaining)
+                #print("Time remaining, ", time_remaining)
                 for i in range(int(time_remaining)):
                     time.sleep(key_wait)
 
-            print("Sleep 1")
+            #print("Sleep 1")
             #time.sleep(1)
             self.nao_rest()
-            print("Sleep 2")
+            #print("Sleep 2")
             time.sleep(self.timing_for_head_turn)
 
             ###########################
@@ -450,8 +456,26 @@ class NaoPosnerExperiment():
                 self.corr_trials += 1
             # Information to be published:
             # Participants ID (PID), Participants Age (AGE), Start and end time of trial, block type, trial type, trial_number (Consecutive increasing each block), validity(True/False), letter_displayed_in_trial, user pressed key, user pressed key timestamp
-            information_to_publish = [self.PID, self.AGE, start_time, end_time, self.block_type, self.get_trial_type(t[1], t[0], t[2]), self.trial_number, valid_trial, letter_displayed_in_trial, self.CommandExecuter.last_key_pressed, self.CommandExecuter.last_key_timestamp]
-            log_string = str(t[0])+","+str(t[1])+","+str(t[2])+","
+            information_to_publish = [  self.PID, 
+                                        self.AGE, 
+                                        start_time, 
+                                        end_time, 
+                                        self.block_type, 
+                                        str(t[0]),
+                                        str(t[1]),
+                                        str(t[2]),
+                                        self.get_trial_type(t[1], t[0], t[2]), 
+                                        self.trial_number, 
+                                        valid_trial, 
+                                        letter_displayed_in_trial, 
+                                        self.CommandExecuter.last_key_pressed, 
+                                        self.CommandExecuter.last_key_timestamp,
+                                        self.head_turn_sent_time,
+                                        self.stimulus_sent_time
+                                        ]
+
+            # log_string = str(t[0])+","+str(t[1])+","+str(t[2])+","
+            log_string = ""
             for info in information_to_publish:
                 log_string += (str(info)+",")
             #print(log_string)logger
@@ -478,7 +502,7 @@ class NaoPosnerExperiment():
 
                 # Display on btoh:
                 # self.CommandExecuter.pub_result.publish("Response Time: {},{}/{} Correct".format(str(np.round(reaction_times, 2)), str(correct_counter), str(counter)))
-                print("Sleep 3")
+                #print("Sleep 3")
                 time.sleep(int(config['Timing']['ResultTimer']))
 
             if ((counter == trials_before_feedback) and not warmup) or (counter == (trials_before_feedback + 2) and warmup):
@@ -486,7 +510,7 @@ class NaoPosnerExperiment():
                 print("Counter", counter, " trials_before_feedback", trials_before_feedback)
                 reaction_times = self.CommandExecuter.reaction_times
                 self.CommandExecuter.pub_result.publish("Average Response: {}s,{}/{} Correct".format(str(np.round(np.mean(reaction_times), 2)), str(correct_counter), str(counter)))
-                print("Sleep 4")
+                #print("Sleep 4")
                 time.sleep(int(config['Timing']['ResultTimer']))
                 correct_counter = 0
 
@@ -500,9 +524,8 @@ class NaoPosnerExperiment():
         reaction_times = np.array([self.CommandExecuter.reaction_times])
         print("Mean reaction times: {}".format(np.round(np.mean(reaction_times), 2)))
         print("{} Perc. of Trials were valid".format(np.round((float(self.corr_trials)/float(self.num_trials)), 4)*100))
-        self.CommandExecuter.alive = False
 
-        print("Sleep 5")
+        #print("Sleep 5")
         time.sleep(0.5)
 
     # Generate all blocks
@@ -588,7 +611,7 @@ class NaoPosnerExperiment():
         block_type = "N/A"
         block_types= num_blocks*[block_type]
 
-        print("Total number of trials; ", len(list_block))
+        #print("Total number of trials; ", len(list_block))
 
         return list_block, block_types
 
@@ -597,8 +620,10 @@ class NaoPosnerExperiment():
     def nao_rest(self):
 
         if NAO_FLAG:
-            # self.CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, self.CommandExecuter.maxSpeed, False)
-            self.CommandExecuter.updateCoordinates(rest_position["x"], rest_position["y"], rest_position["z"])
+            self.CommandExecuter.tracker.lookAt([rest_position["x"], rest_position["y"], rest_position["z"]], 0, self.CommandExecuter.maxSpeed, False)
+            now = datetime.now()
+            self.CommandExecuter.head_info2 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+            #self.CommandExecuter.updateCoordinates(rest_position["x"], rest_position["y"], rest_position["z"])
             self.CommandExecuter.pub_stimulus.publish(" , ")
             self.CommandExecuter.resting = True
 
@@ -609,7 +634,7 @@ class NaoPosnerExperiment():
         dir_to_look = (right_screen["x"], right_screen["y"], right_screen["z"])
         str_to_display = "N/A"
 
-        print("Nao Move", t)
+        #print("Nao Move", t)
 
         # Check Left direction and congruency:
         if(t[0] == "L"):
@@ -630,13 +655,24 @@ class NaoPosnerExperiment():
             else:
                 str_to_display = " ,v"
 
+        # nao_head_start_time = datetime.now()
         if NAO_FLAG:
             # update coordinates, and publish the stimuli
-            self.CommandExecuter.updateCoordinates(dir_to_look[0], dir_to_look[1], dir_to_look[2] )
+            #self.CommandExecuter.updateCoordinates(dir_to_look[0], dir_to_look[1], dir_to_look[2] )
             # self.CommandExecuter.tracker.lookAt([dir_to_look[0], dir_to_look[1], dir_to_look[2]], 0, self.CommandExecuter.maxSpeed, False)
+            self.CommandExecuter.tracker.lookAt([dir_to_look[0], dir_to_look[1], dir_to_look[2]], 0, self.CommandExecuter.maxSpeed, False)
+            now = datetime.now()
+            self.head_turn_sent_time = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
+            self.CommandExecuter.head_info2 = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
 
-        time.sleep(stimuli_wait)
+        # nao_head_end_time = datetime.now()
+        # elapsed_time = (nao_head_start_time-nao_head_end_time).microseconds
+        #time.sleep(stimuli_wait)
+        now = datetime.now()
+        self.stimulus_sent_time = now.strftime("%d.%m.%y-%Hh%Mm%Ss%fns")
         self.CommandExecuter.pub_stimulus.publish(str_to_display)
+
+        # print("Time to perform command: ", elapsed_time)
 
     # Function to wait for user input -> Signalling readiness
     def participant_interface(self, ready_for = None):
@@ -716,16 +752,16 @@ if __name__ == '__main__':
             training_size = int(config['Experiment']['TrainingSize'])
 
             # Training Block
-            # if(training_block):
-            #     e.play_block(training_block, training_size, training_size, training_size, True)
+            #if(training_block):
+            #    e.play_block(training_block, training_size, training_size, training_size, True)
 
             e.play_block(True, number_of_trials, 8, size_of_block)            
-            e.play_block(True, number_of_trials, 8, size_of_block)  
 
             # e.generate_all_block(False, 3)
             # sys.exit(0)
             
         except Exception as expt:
+            e.CommandExecuter.alive = False
             print(expt)
             e.myBroker.shutdown()
             sys.exit(0)
@@ -733,6 +769,5 @@ if __name__ == '__main__':
     # # Clean up
     # e.nao_rest()
     # rospy.signal_shutdown('Done')
-
     e.myBroker.shutdown()
     sys.exit(0)
