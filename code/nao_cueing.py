@@ -161,7 +161,7 @@ class CommandExecuterModule(ALModule):
 
         self.dt_comand_key = 42
         self.last_key_pressed = -1
-        self.last_key_timestamp = 2
+        self.last_key_timestamp = -1
 
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
@@ -191,10 +191,11 @@ class CommandExecuterModule(ALModule):
 
         # Clear the key pressed and timestamp:
         self.last_key_pressed = -1
-        self.last_key_timestamp = 3
+        self.last_key_timestamp = -1
 
         # response_flag = False
 
+        self.dt_comand_key = 42
         keypress_start_time = datetime.now()
 
         while(i < (key_total/key_wait)):
@@ -578,31 +579,31 @@ class NaoPosnerExperiment():
         print("Repeaters: ", repeaters)
 
 
-        ## This adds warm ups to each 8:
-        # blocks_with_warmup = []
-        # block_counter = 0
-        # for b in range(num_blocks):
+        ## This adds warm ups to each block:
+        blocks_with_warmup = []
+        block_counter = 0
+        for b in range(num_blocks):
 
-        #     # # Add the two trials at the start of the sequence for the warmup
-        #     if warmup:
-        #         blocks_with_warmup.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
-        #         blocks_with_warmup.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
-        #         # blocks_with_warmup.append(('Z', 'Z', 'Z'))
-        #         # blocks_with_warmup.append(('Z', 'Z', 'Z'))
+            # # Add the two trials at the start of the sequence for the warmup
+            if warmup:
+                blocks_with_warmup.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+                blocks_with_warmup.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+                # blocks_with_warmup.append(('Z', 'Z', 'Z'))
+                # blocks_with_warmup.append(('Z', 'Z', 'Z'))
 
-        #     for t in range(calculated_block_size):
-        #         blocks_with_warmup.append(list_block[block_counter])
-        #         block_counter = block_counter + 1
-        # list_block = blocks_with_warmup
+            for t in range(calculated_block_size):
+                blocks_with_warmup.append(list_block[block_counter])
+                block_counter = block_counter + 1
+        list_block = blocks_with_warmup
 
 
 
         # # Add the two trials at the start of the sequence for the warmup
-        if warmup:
-            list_block.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
-            list_block.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
-            # blocks_with_warmup.append(('Z', 'Z', 'Z'))
-            # blocks_with_warmup.append(('Z', 'Z', 'Z'))
+        # if warmup:
+        #     list_block.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+        #     list_block.append((random.choice(BD[0]), random.choice(BD[1]), random.choice(BD[2])))
+        #     # blocks_with_warmup.append(('Z', 'Z', 'Z'))
+        #     # blocks_with_warmup.append(('Z', 'Z', 'Z'))
 
 
         print("Blocks with WARM", list_block, len(list_block))

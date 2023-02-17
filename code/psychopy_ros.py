@@ -15,6 +15,8 @@ class StimuliController:
         self.config = configparser.ConfigParser()
         self.config.read('config.ini')
 
+        self.img_size = float(self.config['Screen']['ImgSize'])
+
         # Convert config file string to tuple for the screen res
         self.screen_resolution = tuple(int(v) for v in re.findall("[0-9]+", self.config['Screen']['ScreenResolution']))
         self.full_screen = bool(self.config['Screen']['Fullscreen'])
@@ -180,6 +182,8 @@ class StimuliController:
                     #print("right img:: ", right_img)
                     msg1_msg = visual.ImageStim(self.win1, right_img) # set image          
 
+        msg0_msg.size = self.img_size
+        msg1_msg.size = self.img_size
         # Draw and flip:
         msg0_msg.draw()
         msg1_msg.draw()
