@@ -165,6 +165,7 @@ class CommandExecuterModule(ALModule):
         self.last_key_pressed = -1
         self.last_key_timestamp = -1
         self.keypress_counter = 0
+        self.participant_ready = False
 
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
@@ -228,6 +229,9 @@ class CommandExecuterModule(ALModule):
         if(key_press[1] == "exit"):
             self.exit_flag
             return -1
+        elif(key_press[1] == "ready"):
+            self.participant_ready = True
+            return 1
 
         self.keypress_counter = self.keypress_counter + 1
 
@@ -393,12 +397,6 @@ class NaoPosnerExperiment():
 
             self.CommandExecuter.pub_stimulus.publish(" , ")
 
-            self.CommandExecuter.set_eyes(True)
-
-            # Record the start time of the trail:
-            start_time = self.get_formatted_datetime()
-            self.participant_interface("Trial")
-
             # Counter to keep track of trial, blocks etc and sort out the warmup trials
             if(warmup and counter == (trials_before_feedback + 2)) or (counter == trials_before_feedback and not warmup):
                 print("BLOCK " + str(block_num) + " Complete")
@@ -408,9 +406,22 @@ class NaoPosnerExperiment():
                 block_num = block_num + 1
                 warmup = True
 
-                self.participant_interface("Block")
+                self.CommandExecuter.participant_ready = False
+
+                if(block_num -1 == (num_trials/trials_before_feedback)/2):
+                    self.participant_interface("Block")
+                else:
+                    while not self.CommandExecuter.participant_ready:
+                        pass
+                    self.CommandExecuter.participant_ready = False
+                    time.sleep(1)
                 ## @TODO replace this with input to start the next trail, not just wait 5s:
 
+            self.CommandExecuter.set_eyes(True)
+
+            # Record the start time of the trail:
+            start_time = self.get_formatted_datetime()
+            self.participant_interface("Trial")
 
             # Perform the movements based on the current trial:
             self.nao_move(t)
@@ -527,6 +538,10 @@ class NaoPosnerExperiment():
                 #print("Sleep 4")
                 time.sleep(int(config['Timing']['ResultTimer']))
                 correct_counter = 0
+
+
+            if self.CommandExecuter.exit_flag:
+                return 1
 
         # if not self.CommandExecuter.resting:
         #     self.nao_rest()
@@ -781,7 +796,7 @@ if __name__ == '__main__':
             ## #print(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
             #e.generate_all_block(False, 3)
             # e.generate_all_block(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
-            # sys.exit(0)
+            sys.exit(0)
             
         except Exception as expt:
             e.CommandExecuter.alive = False

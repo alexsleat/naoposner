@@ -17,10 +17,10 @@ class StimuliController:
 
         self.img_size = float(self.config['Screen']['ImgSize'])
         # The Y axis acts weight, because it's of a percentage of the total. So need the below factor applied to the height size:
-        self.height_scalar = 0.25
+        self.height_scalar = 0.35
 
         self.x_location = 0.5
-        self.y_location = 0.0
+        self.y_location = 0.2
 
         # Convert config file string to tuple for the screen res
         self.screen_resolution = tuple(int(v) for v in re.findall("[0-9]+", self.config['Screen']['ScreenResolution']))
@@ -200,7 +200,7 @@ class StimuliController:
     ## Check key presses, quit if q
     def checkForKey(self, key_list):
 
-        key_list = key_list + ['quit', 'q']
+        key_list = key_list + ['quit', 'q', 'c']
         keys = self.kb.getKeys(key_list, waitRelease=False)
 
         if 'q' in keys:
@@ -208,6 +208,10 @@ class StimuliController:
             self.pub_keypress.publish(key_logger)
             print("quits")
             core.quit()
+        if 'c' in keys:
+            key_logger =  "KeyPress,ready,ready,date"
+            self.pub_keypress.publish(key_logger)
+            print("ready")
         if len(keys) > 0:
             print("RCVD keypress: ", keys)
 
