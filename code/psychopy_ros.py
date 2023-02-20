@@ -204,6 +204,8 @@ class StimuliController:
         keys = self.kb.getKeys(key_list, waitRelease=False)
 
         if 'q' in keys:
+            key_logger =  "KeyPress,exit,exit,date"
+            self.pub_keypress.publish(key_logger)
             print("quits")
             core.quit()
         if len(keys) > 0:

@@ -130,6 +130,8 @@ class CommandExecuterModule(ALModule):
 
         self.reaction_times = []
 
+        self.exit_flag = False
+
         global config 
         self.participant_key = str(config['Timing']['ParticipantKey'])
 
@@ -162,6 +164,7 @@ class CommandExecuterModule(ALModule):
         self.dt_comand_key = 42
         self.last_key_pressed = -1
         self.last_key_timestamp = -1
+        self.keypress_counter = 0
 
         # ROS Pubs n subs:
         self.pub_stimulus = rospy.Publisher('stimulus', String, queue_size=0)
@@ -218,9 +221,15 @@ class CommandExecuterModule(ALModule):
         return None
 
     def keypressCb(self, data):
-        print("KeyPressed: ", data.data)
+        # print("KeyPressed: ", data.data)
         # Parse the message string
         key_press = data.data.split(',')
+
+        if(key_press[1] == "exit"):
+            self.exit_flag
+            return -1
+
+        self.keypress_counter = self.keypress_counter + 1
 
         # Store the key press data in member variables
         self.last_key_timestamp = key_press[3]
@@ -331,7 +340,7 @@ class NaoPosnerExperiment():
         self.head_turn_sent_time = ""
         self.stimulus_sent_time = ""
 
-        headers_string = "PID,Age,Trial_Start,Trial_End,Block_Type,LeftRight,TV,Congruency,Trial_Type,Trial_No,Trial_Valid,Letter_Displayed,User_KeyPress,User_KeyTimeStamp,Onset_HeadMovement,Onset_Stimulus"
+        headers_string = "PID,Age,Trial_Start,Trial_End,Block_Type,LeftRight,TV,Congruency,Trial_Type,Trial_No,Trial_Valid,Letter_Displayed,User_KeyPress,User_KeyTimeStamp,User_KeyCounter,Onset_HeadMovement,Onset_Stimulus"
 
         with open(CSV_FILENAME, 'a') as f:
             f.write(headers_string + "\n")
@@ -362,7 +371,8 @@ class NaoPosnerExperiment():
         time.sleep(1)
 
         # Generate & randomize the full block:
-        list_block, block_types = self.generate_all_block(warmup, num_trials/block_size)
+        #print(warmup, num_trials/8, trials_before_feedback, num_trials/trials_before_feedback)
+        list_block, block_types = self.generate_all_block(warmup, num_trials/8, trials_before_feedback, num_trials/trials_before_feedback)
 
         # Run through a full trial:
         counter = 0
@@ -379,6 +389,8 @@ class NaoPosnerExperiment():
             user_pressed = str_to_display = ''
             self.CommandExecuter.last_key_pressed = -1
 
+            self.CommandExecuter.keypress_counter = 0
+
             self.CommandExecuter.pub_stimulus.publish(" , ")
 
             self.CommandExecuter.set_eyes(True)
@@ -394,7 +406,7 @@ class NaoPosnerExperiment():
                 counter = 0
                 correct_counter = 0
                 block_num = block_num + 1
-                warmup = False
+                warmup = True
 
                 self.participant_interface("Block")
                 ## @TODO replace this with input to start the next trail, not just wait 5s:
@@ -471,6 +483,7 @@ class NaoPosnerExperiment():
                                         letter_displayed_in_trial, 
                                         self.CommandExecuter.last_key_pressed, 
                                         self.CommandExecuter.last_key_timestamp,
+                                        self.CommandExecuter.keypress_counter,
                                         self.head_turn_sent_time,
                                         self.stimulus_sent_time
                                         ]
@@ -531,9 +544,9 @@ class NaoPosnerExperiment():
 
     # Generate all blocks
     ### Geneate a set of all 8 combinations (2x2x2), multiply by the total number of blocks in the trial, and add 2 for warmup to the first block
-    def generate_all_block(self, warmup=True, num_blocks=1):
+    def generate_all_block(self, warmup=True, num_chunks=1, block_length=8, number_of_blocks=1):
 
-        print("Generating Blocks ", num_blocks)
+        print("Generating Blocks ", num_chunks)
 
         # Generate full block:
         BD = [["L", "R"],["T", "V"] ,["C", "I"]]
@@ -541,13 +554,15 @@ class NaoPosnerExperiment():
 
         # Convert to a list, should be a nicer way to do this?
         list_block = []
-        calculated_block_size = 0
+        calculated_chunk_size = 0
         for prod in block:
             list_block.append(tuple(prod))
-            calculated_block_size = calculated_block_size + 1
+            calculated_chunk_size = calculated_chunk_size + 1
+
+        print(calculated_chunk_size)
 
         # Multiply the list by the number specified
-        list_block = list_block * num_blocks
+        list_block = list_block * num_chunks
 
         # Randomize across all blocks:
         random.shuffle(list_block)
@@ -575,14 +590,16 @@ class NaoPosnerExperiment():
                     else:
                         pass
 
-        print("Origi: ", list_block)
+        print("Origi: ", list_block, len(list_block))
         print("Repeaters: ", repeaters)
 
 
         ## This adds warm ups to each block:
         blocks_with_warmup = []
         block_counter = 0
-        for b in range(num_blocks):
+        feedback_length = (num_chunks * calculated_chunk_size) / block_length
+        print("feedback len", feedback_length)
+        for b in range(number_of_blocks):
 
             # # Add the two trials at the start of the sequence for the warmup
             if warmup:
@@ -591,9 +608,10 @@ class NaoPosnerExperiment():
                 # blocks_with_warmup.append(('Z', 'Z', 'Z'))
                 # blocks_with_warmup.append(('Z', 'Z', 'Z'))
 
-            for t in range(calculated_block_size):
-                blocks_with_warmup.append(list_block[block_counter])
-                block_counter = block_counter + 1
+            for c in range(block_length/calculated_chunk_size):
+                for t in range(calculated_chunk_size):
+                    blocks_with_warmup.append(list_block[block_counter])
+                    block_counter = block_counter + 1
         list_block = blocks_with_warmup
 
 
@@ -610,7 +628,7 @@ class NaoPosnerExperiment():
 
         # Create list of possible block types
         block_type = "N/A"
-        block_types= num_blocks*[block_type]
+        block_types= num_chunks*[block_type]
 
         #print("Total number of trials; ", len(list_block))
 
@@ -644,16 +662,16 @@ class NaoPosnerExperiment():
             # Check what value to display:
             if(t[1] == "T"):
                 str_to_display = "t, "
-            else:
+            elif (t[1] == "V"):
                 str_to_display = "v, "
         # Check Right direction and congruency:
-        else:
+        elif (t[0] == "R"):
             if(t[2] == "C"):
                 dir_to_look = (left_screen["x"], left_screen["y"], left_screen["z"])
             # Check what value to display:
             if(t[1] == "T"):
                 str_to_display = " ,t"
-            else:
+            elif (t[1] == "V"):
                 str_to_display = " ,v"
 
         # nao_head_start_time = datetime.now()
@@ -737,11 +755,11 @@ if __name__ == '__main__':
     # # Start a ROS node that will run in parallel to the main loop
     # rospy.init_node('my_node')
 
-    while not rospy.is_shutdown():
+    e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
+
+    while not e.CommandExecuter.exit_flag:
 
         try: 
-            #main()
-            e = NaoPosnerExperiment(NAO_IP, NAO_PORT)
             e.create_new_aprticipant()
             e.nao_rest()
 
@@ -752,13 +770,17 @@ if __name__ == '__main__':
             training_block = bool(config['Experiment']['TrainingBlock'])
             training_size = int(config['Experiment']['TrainingSize'])
 
+            
             # Training Block
-            #if(training_block):
-            #    e.play_block(training_block, training_size, training_size, training_size, True)
+            if(training_block):
+               e.play_block(training_block, training_size, training_size, training_size, True)
 
-            e.play_block(True, number_of_trials, 8, size_of_block)            
+            e.play_block(True, number_of_trials, 8, size_of_block, False)            
 
-            # e.generate_all_block(False, 3)
+            ### def generate_all_block(self, warmup=True, num_chunks=1, block_length=8):
+            ## #print(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
+            #e.generate_all_block(False, 3)
+            # e.generate_all_block(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
             # sys.exit(0)
             
         except Exception as expt:
