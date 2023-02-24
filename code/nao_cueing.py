@@ -344,7 +344,7 @@ class NaoPosnerExperiment():
         self.head_turn_sent_time = ""
         self.stimulus_sent_time = ""
 
-        headers_string = "PID,Age,Trial_Start,Trial_End,Block_Type,LeftRight,TV,Congruency,Trial_Type,Trial_No,Trial_Valid,Letter_Displayed,User_KeyPress,User_KeyTimeStamp,User_KeyCounter,Onset_HeadMovement,Onset_Stimulus"
+        headers_string = "PID,Age,Trial_Start,Trial_End,Block_Type,LeftRight,TV,Congruency,Trial_Type,Block_No,Trial_No,Trial_Valid,Letter_Displayed,User_KeyPress,User_KeyTimeStamp,User_KeyCounter,Onset_HeadMovement,Onset_Stimulus"
 
         with open(CSV_FILENAME, 'a') as f:
             f.write(headers_string + "\n")
@@ -499,7 +499,8 @@ class NaoPosnerExperiment():
                                         str(t[0]),
                                         str(t[1]),
                                         str(t[2]),
-                                        self.get_trial_type(t[1], t[0], t[2]), 
+                                        self.get_trial_type(t[1], t[0], t[2]),
+                                        block_num, 
                                         self.trial_number, 
                                         valid_trial, 
                                         letter_displayed_in_trial, 
@@ -807,6 +808,17 @@ if __name__ == '__main__':
             ## #print(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
             #e.generate_all_block(False, 3)
             # e.generate_all_block(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
+
+            print("Current method")
+            e.generate_all_block(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
+
+            print("Fixed? method")
+            full_blocks = []
+            blocks_to_build = number_of_trials/size_of_block
+            for i in range(number_of_trials/size_of_block):
+                full_blocks.append(e.generate_all_block(True, (number_of_trials/8)/blocks_to_build, size_of_block, (number_of_trials/size_of_block)/blocks_to_build))
+            print(len(full_blocks))
+
             sys.exit(0)
             
         except Exception as expt:
