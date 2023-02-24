@@ -19,7 +19,7 @@ class StimuliController:
         # The Y axis acts weight, because it's of a percentage of the total. So need the below factor applied to the height size:
         self.height_scalar = 0.35
 
-        self.x_location = 0.5
+        self.x_location = 0.8
         self.y_location = 0.2
 
         # Convert config file string to tuple for the screen res

@@ -385,6 +385,12 @@ class NaoPosnerExperiment():
 
         self.participant_interface("Block")
 
+        self.CommandExecuter.participant_ready = False
+        while not self.CommandExecuter.participant_ready:
+            pass
+        self.CommandExecuter.participant_ready = False
+        time.sleep(1)
+
         for t in (list_block):
 
             # Get the letter displayed in the trail (in lower case):
@@ -410,6 +416,11 @@ class NaoPosnerExperiment():
 
                 if(block_num -1 == (num_trials/trials_before_feedback)/2):
                     self.participant_interface("Block")
+
+                    while not self.CommandExecuter.participant_ready:
+                        pass
+                    self.CommandExecuter.participant_ready = False
+                    time.sleep(1)
                 else:
                     while not self.CommandExecuter.participant_ready:
                         pass
