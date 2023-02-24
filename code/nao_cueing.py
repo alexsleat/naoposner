@@ -376,7 +376,17 @@ class NaoPosnerExperiment():
 
         # Generate & randomize the full block:
         #print(warmup, num_trials/8, trials_before_feedback, num_trials/trials_before_feedback)
-        list_block, block_types = self.generate_all_block(warmup, num_trials/8, trials_before_feedback, num_trials/trials_before_feedback)
+        # list_block, block_types = self.generate_all_block(warmup, num_trials/8, trials_before_feedback, num_trials/trials_before_feedback)
+
+
+        list_block = []
+        blocks_to_build = num_trials/trials_before_feedback
+        for i in range(blocks_to_build):
+            gb, gd = self.generate_all_block(warmup, (num_trials/8) / blocks_to_build, trials_before_feedback, (num_trials/trials_before_feedback)/blocks_to_build)
+            # gb, gd = e.generate_all_block(True, (number_of_trials/8)/blocks_to_build, size_of_block, (number_of_trials/size_of_block)/blocks_to_build)
+            list_block = list_block + gb
+        print(list_block)
+        print(len(list_block))
 
         # Run through a full trial:
         counter = 0
@@ -798,9 +808,9 @@ if __name__ == '__main__':
             training_size = int(config['Experiment']['TrainingSize'])
 
             
-            # Training Block
-            if(training_block):
-               e.play_block(training_block, training_size, training_size, training_size, True)
+            # # Training Block
+            # if(training_block):
+            #    e.play_block(training_block, training_size, training_size, training_size, True)
 
             e.play_block(True, number_of_trials, 8, size_of_block, False)            
 
@@ -809,15 +819,17 @@ if __name__ == '__main__':
             #e.generate_all_block(False, 3)
             # e.generate_all_block(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
 
-            print("Current method")
-            e.generate_all_block(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
+            # print("Current method")
+            # e.generate_all_block(True, number_of_trials/8, size_of_block, number_of_trials/size_of_block)
 
-            print("Fixed? method")
-            full_blocks = []
-            blocks_to_build = number_of_trials/size_of_block
-            for i in range(number_of_trials/size_of_block):
-                full_blocks.append(e.generate_all_block(True, (number_of_trials/8)/blocks_to_build, size_of_block, (number_of_trials/size_of_block)/blocks_to_build))
-            print(len(full_blocks))
+            # print("Fixed method")
+            # full_blocks = []
+            # blocks_to_build = number_of_trials/size_of_block
+            # for i in range(number_of_trials/size_of_block):
+            #     gb, gd = e.generate_all_block(True, (number_of_trials/8)/blocks_to_build, size_of_block, (number_of_trials/size_of_block)/blocks_to_build)
+            #     full_blocks = full_blocks + gb
+            # print(full_blocks)
+            # print(len(full_blocks))
 
             sys.exit(0)
             
