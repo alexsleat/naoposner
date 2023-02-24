@@ -809,8 +809,8 @@ if __name__ == '__main__':
 
             
             # # Training Block
-            # if(training_block):
-            #    e.play_block(training_block, training_size, training_size, training_size, True)
+            if(training_block):
+               e.play_block(training_block, training_size, training_size, training_size, True)
 
             e.play_block(True, number_of_trials, 8, size_of_block, False)            
 
